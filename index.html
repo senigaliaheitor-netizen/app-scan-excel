@@ -1,1 +1,202 @@
 
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Captura de Foto para Google Planilhas</title>
+    <!-- Tailwind CSS para design simples e moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Identity Services -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
+
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center space-y-6 mt-6">
+        <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
+        <p class="text-sm text-slate-500 text-center">Tire uma foto para extrair todos os dados do rótulo diretamente na sua conta do Google.</p>
+
+        <!-- Botão de Login do Google -->
+        <div id="auth-section" class="w-full flex justify-center">
+            <button id="authorize_button" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center space-x-2 w-full transition shadow">
+                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/></svg>
+                <span>Conectar com Google</span>
+            </button>
+        </div>
+
+        <!-- Secção de Captura (Desativada até o login) -->
+        <div id="capture-section" class="w-full flex flex-col items-center space-y-4 hidden">
+            <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
+            
+            <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
+                <span>📸 Tirar Foto / Selecionar</span>
+                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processImage(event)">
+            </label>
+
+            <div id="preview-container" class="w-full hidden">
+                <img id="image-preview" class="w-full rounded-lg border border-slate-200 shadow-inner max-h-64 object-cover">
+            </div>
+
+            <!-- Status de Processamento -->
+            <div id="status" class="text-sm font-medium text-slate-600 text-center"></div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÕES DA APLICAÇÃO
+        const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
+        const GEMINI_API_KEY = 'AQ.Ab8RN6JWnWK8bWbEaPUkOnJ3I9Xnri_TOQ77Z5WuhtQnb3Z5yg';
+        const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+
+        let tokenClient;
+        let accessToken = null;
+
+        window.onload = function() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (tokenResponse) => {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        accessToken = tokenResponse.access_token;
+                        document.getElementById('auth-section').classList.add('hidden');
+                        document.getElementById('capture-section').classList.remove('hidden');
+                        document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
+                    }
+                },
+            });
+        };
+
+        function handleAuthClick() {
+            tokenClient.requestAccessToken({prompt: 'consent'});
+        }
+
+        async function processImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const preview = document.getElementById('image-preview');
+            preview.src = URL.createObjectURL(file);
+            document.getElementById('preview-container').classList.remove('hidden');
+
+            const status = document.getElementById('status');
+            status.innerHTML = '⏳ Analisando imagem com IA...';
+
+            try {
+                // 1. Converter Imagem para Base64
+                const base64Image = await convertBase64(file);
+                const pureBase64 = base64Image.split(',')[1];
+
+                // 2. Enviar para API do Gemini com o prompt completo de extração
+                const promptText = `Analise este rótulo de produto e extraia TODAS as informações abaixo.
+Retorne estritamente em formato JSON válido com as seguintes chaves:
+{
+  "nome": "Nome do produto ou substância",
+  "validade": "Data de validade",
+  "lote": "Lote de fabricação",
+  "fabricante": "Nome do fabricante",
+  "obs": "Observações ou --- caso não haja",
+  "codigo": "Código numérico do produto/código de barras"
+}
+Se algum campo não for identificado, preencha com "N/A".`;
+
+                const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [
+                                { text: promptText },
+                                { inline_data: { mime_type: file.type, data: pureBase64 } }
+                            ]
+                        }]
+                    })
+                });
+
+                const geminiData = await geminiResponse.json();
+                const rawText = geminiData.candidates[0].content.parts[0].text;
+                const jsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const data = JSON.parse(jsonText);
+
+                status.innerHTML = `✅ Extraído com sucesso:<br>
+                <b>Nome:</b> ${data.nome}<br>
+                <b>Validade:</b> ${data.validade}<br>
+                <b>Lote:</b> ${data.lote}<br>
+                <b>Fabricante:</b> ${data.fabricante}<br>
+                <b>OBS:</b> ${data.obs}<br>
+                <b>Código:</b> ${data.codigo}<br><br>
+                ⏳ Guardando na sua Planilha Google...`;
+
+                // 3. Guardar no Google Planilhas do Usuário
+                await saveToUserGoogleSheet(data);
+                status.innerHTML = `🎉 Sucesso! Guardado na planilha <b>'Dados Extraídos - IA'</b> no seu Google Drive!`;
+
+            } catch (error) {
+                console.error(error);
+                status.innerHTML = `<span class="text-red-500">❌ Erro ao processar: ${error.message}</span>`;
+            }
+        }
+
+        function convertBase64(file) {
+            return new Promise((resolve, reject) => {
+                const fileReader = new FileReader();
+                fileReader.readAsDataURL(file);
+                fileReader.onload = () => resolve(fileReader.result);
+                fileReader.onerror = (error) => reject(error);
+            });
+        }
+
+        async function saveToUserGoogleSheet(data) {
+            let spreadsheetId = localStorage.getItem('user_spreadsheet_id');
+
+            if (!spreadsheetId) {
+                // Criar uma nova planilha se ainda não existir
+                const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        properties: { title: 'Dados Extraídos - IA' },
+                        sheets: [{ properties: { title: 'Dados' } }]
+                    })
+                });
+                const createData = await createResponse.json();
+                spreadsheetId = createData.spreadsheetId;
+                localStorage.setItem('user_spreadsheet_id', spreadsheetId);
+
+                // Criar cabeçalho das colunas (A1 até F1)
+                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        values: [["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "OBS", "Código do Produto"]] 
+                    })
+                });
+            }
+
+            // Anexar a nova linha com todas as informações
+            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    values: [[
+                        data.nome || "N/A", 
+                        data.validade || "N/A", 
+                        data.lote || "N/A", 
+                        data.fabricante || "N/A", 
+                        data.obs || "N/A", 
+                        data.codigo || "N/A"
+                    ]] 
+                })
+            });
+        }
+    </script>
+</body>
+</html>
