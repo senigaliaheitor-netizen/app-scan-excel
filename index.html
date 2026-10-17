@@ -10,13 +10,21 @@
 
     <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center space-y-6 mt-6">
         <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
-        <p class="text-sm text-slate-500 text-center">Tire uma foto para extrair todos os dados do rótulo diretamente na sua conta do Google.</p>
+        <p class="text-sm text-slate-500 text-center">Tire uma foto ou envie imagens da galeria para extrair os dados do rótulo direto na sua conta do Google.</p>
 
-        <!-- Chave Gemini (fica só no seu navegador, não no código) -->
-        <div class="w-full space-y-1">
-            <label class="text-xs font-semibold text-slate-600">Chave da API Gemini</label>
-            <input id="gemini-key" type="password" placeholder="Cole sua chave aqui"
-                   class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" onchange="saveKey()">
+        <!-- Chave Gemini: digitada pelo usuário, guardada só neste navegador -->
+        <div class="w-full space-y-2">
+            <label for="gemini-key" class="text-xs font-semibold text-slate-600">Sua chave da API Gemini</label>
+            <div class="flex space-x-2">
+                <input id="gemini-key" type="password" autocomplete="off" placeholder="Cole sua chave aqui"
+                       class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                <button type="button" onclick="toggleKey()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg">👁</button>
+                <button type="button" onclick="saveKey()" class="px-3 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold">Salvar</button>
+            </div>
+            <p id="key-status" class="text-xs text-slate-500">
+                A chave fica salva apenas neste navegador e nunca é enviada para o código do site.
+                Crie uma em <a class="text-blue-600 underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+            </p>
         </div>
 
         <!-- Login -->
@@ -32,15 +40,20 @@
             <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
 
             <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
-                <span>📸 Tirar Foto / Selecionar</span>
-                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processImage(event)">
+                <span>📸 Tirar Foto</span>
+                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processFiles(event)">
+            </label>
+
+            <label class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
+                <span>🖼️ Enviar da Galeria</span>
+                <input type="file" accept="image/*" multiple id="gallery-input" class="hidden" onchange="processFiles(event)">
             </label>
 
             <div id="preview-container" class="w-full hidden">
-                <img id="image-preview" class="w-full rounded-lg border border-slate-200 shadow-inner max-h-64 object-cover">
+                <img id="image-preview" class="w-full rounded-lg border border-slate-200 shadow-inner max-h-64 object-cover" alt="Pré-visualização">
             </div>
 
-            <div id="status" class="text-sm font-medium text-slate-600 text-center leading-relaxed"></div>
+            <div id="status" class="text-sm font-medium text-slate-600 text-center leading-relaxed w-full"></div>
         </div>
     </div>
 
@@ -51,18 +64,32 @@
 
         let tokenClient;
         let accessToken = null;
+        let busy = false;
 
         function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
         function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
-        function saveKey() {
-            store('gemini_key', document.getElementById('gemini-key').value.trim());
-        }
+        /* ---------- Chave Gemini (só no navegador) ---------- */
         function getKey() {
             return document.getElementById('gemini-key').value.trim() || load('gemini_key') || '';
         }
+        function saveKey() {
+            const v = document.getElementById('gemini-key').value.trim();
+            const el = document.getElementById('key-status');
+            if (!v) {
+                el.innerHTML = '<span class="text-red-500">Cole a chave antes de salvar.</span>';
+                return;
+            }
+            store('gemini_key', v);
+            el.innerHTML = '<span class="text-green-600">✅ Chave salva neste navegador.</span>';
+        }
+        function toggleKey() {
+            const i = document.getElementById('gemini-key');
+            i.type = i.type === 'password' ? 'text' : 'password';
+        }
         document.getElementById('gemini-key').value = load('gemini_key') || '';
 
+        /* ---------- Login Google ---------- */
         function initGoogleAuth() {
             if (!(window.google && google.accounts && google.accounts.oauth2)) return;
             tokenClient = google.accounts.oauth2.initTokenClient({
@@ -93,6 +120,12 @@
             tokenClient.requestAccessToken({ prompt: '' });
         }
 
+        /* ---------- Utilitários ---------- */
+        function escapeHtml(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c =>
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
         function convertBase64(file) {
             return new Promise((resolve, reject) => {
                 const r = new FileReader();
@@ -102,26 +135,46 @@
             });
         }
 
-        async function processImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        /* ---------- Processamento (câmera ou galeria, 1 ou várias fotos) ---------- */
+        async function processFiles(event) {
+            const files = Array.from(event.target.files || []);
+            event.target.value = '';
+            if (!files.length || busy) return;
 
             const status = document.getElementById('status');
             const key = getKey();
             if (!key) {
-                status.innerHTML = '<span class="text-red-500">❌ Cole a chave da API Gemini no campo acima.</span>';
+                status.innerHTML = '<span class="text-red-500">❌ Cole sua chave da API Gemini no campo acima e clique em Salvar.</span>';
                 return;
             }
 
+            busy = true;
+            const results = [];
+            for (let i = 0; i < files.length; i++) {
+                const label = files.length > 1 ? ` (${i + 1}/${files.length})` : '';
+                try {
+                    const data = await processOne(files[i], key, label);
+                    results.push(`✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}`);
+                } catch (error) {
+                    console.error(error);
+                    results.push(`<span class="text-red-500">❌ ${escapeHtml(files[i].name || 'foto')}: ${escapeHtml(error.message)}</span>`);
+                }
+            }
+            status.innerHTML = `🎉 <b>Concluído!</b> Dados enviados para a planilha <b>'Dados Extraídos - IA'</b> no seu Google Drive.<br><br>` +
+                results.join('<br>');
+            busy = false;
+        }
+
+        async function processOne(file, key, label) {
+            const status = document.getElementById('status');
             document.getElementById('image-preview').src = URL.createObjectURL(file);
             document.getElementById('preview-container').classList.remove('hidden');
-            status.innerHTML = '⏳ Analisando imagem com IA...';
+            status.innerHTML = `⏳ Analisando imagem com IA...${label}`;
 
-            try {
-                const base64Image = await convertBase64(file);
-                const pureBase64 = base64Image.split(',')[1];
+            const base64Image = await convertBase64(file);
+            const pureBase64 = base64Image.split(',')[1];
 
-                const promptText = `Analise este rótulo de produto e extraia TODAS as informações abaixo.
+            const promptText = `Analise este rótulo de produto e extraia TODAS as informações abaixo.
 Retorne estritamente em formato JSON válido com as seguintes chaves:
 {
   "nome": "Nome do produto ou substância",
@@ -133,54 +186,41 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
 }
 Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
-                const geminiResponse = await fetch(
-                    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'x-goog-api-key': key
-                    },
-                    body: JSON.stringify({
-                        contents: [{
-                            parts: [
-                                { text: promptText },
-                                { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
-                            ]
-                        }],
-                        generationConfig: { responseMimeType: 'application/json' }
-                    })
-                });
+            const geminiResponse = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-goog-api-key': key
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [
+                            { text: promptText },
+                            { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
+                        ]
+                    }],
+                    generationConfig: { responseMimeType: 'application/json' }
+                })
+            });
 
-                const geminiData = await geminiResponse.json();
-                if (geminiData.error) throw new Error(`Gemini: ${geminiData.error.message}`);
+            const geminiData = await geminiResponse.json();
+            if (geminiData.error) throw new Error(`Gemini: ${geminiData.error.message}`);
 
-                const parts = geminiData.candidates?.[0]?.content?.parts;
-                if (!parts || !parts[0]?.text) {
-                    throw new Error('A IA não retornou um resultado válido. Tente novamente com boa iluminação.');
-                }
-
-                const cleanJsonText = parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-                const data = JSON.parse(cleanJsonText);
-
-                status.innerHTML = `✅ <b>Extraído com sucesso:</b><br>` +
-                    `<b>Nome:</b> ${data.nome}<br>` +
-                    `<b>Validade:</b> ${data.validade}<br>` +
-                    `<b>Lote:</b> ${data.lote}<br>` +
-                    `<b>Fabricante:</b> ${data.fabricante}<br>` +
-                    `<b>OBS:</b> ${data.obs}<br>` +
-                    `<b>Código:</b> ${data.codigo}<br><br>` +
-                    `⏳ Salvando na planilha Google...`;
-
-                await saveToUserGoogleSheet(data);
-                status.innerHTML = `🎉 <b>Sucesso!</b> Dados salvos na planilha <b>'Dados Extraídos - IA'</b> no seu Google Drive!`;
-
-            } catch (error) {
-                console.error(error);
-                status.innerHTML = `<span class="text-red-500">❌ Erro ao processar: ${error.message}</span>`;
+            const parts = geminiData.candidates?.[0]?.content?.parts;
+            if (!parts || !parts[0]?.text) {
+                throw new Error('A IA não retornou um resultado válido. Tente com boa iluminação.');
             }
-            event.target.value = '';
+
+            const cleanJsonText = parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
+            const data = JSON.parse(cleanJsonText);
+
+            status.innerHTML = `⏳ Salvando na planilha Google...${label}`;
+            await saveToUserGoogleSheet(data);
+            return data;
         }
 
+        /* ---------- Google Planilhas ---------- */
         async function sheetsFetch(url, body) {
             const res = await fetch(url, {
                 method: 'POST',
