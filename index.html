@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 6 — pastas e fotos no Drive</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 7 — pastas e fotos no Drive</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -591,6 +591,29 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             ];
         }
 
+        // transforma uma célula da coluna H em link clicável "Ver foto"
+        function linkCellRequest(sheetId, rowIndex, url) {
+            return { updateCells: {
+                range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 7, endColumnIndex: 8 },
+                rows: [{ values: [{ userEnteredValue: { stringValue: 'Ver foto' }, userEnteredFormat: { textFormat: { link: { uri: url } } } }] }],
+                fields: 'userEnteredValue,userEnteredFormat.textFormat.link'
+            } };
+        }
+
+        // linhas antigas, gravadas como texto simples, viram links (uma vez por sessão)
+        async function linkExistingPhotoCells(info) {
+            try {
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!H2:H1000')}`);
+                const reqs = [];
+                (j.values || []).forEach((r, i) => {
+                    const v = r && r[0];
+                    if (v && /^https?:\/\//i.test(v)) reqs.push(linkCellRequest(info.sheetId, 1 + i, v));
+                });
+                if (reqs.length) await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: reqs });
+            } catch (e) { if (e.code === 401) throw e; console.warn('Links antigos não convertidos:', e); }
+        }
+
         // uma vez por sessão: corrige a planilha inteira (idempotente)
         async function ensureFormatting(info) {
             if (info.fmtOk) return;
@@ -598,11 +621,12 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
                     { requests: formatRequests(info.sheetId, 1000) });
             } catch (e) { console.warn('Formatação geral não aplicada:', e); }
+            await linkExistingPhotoCells(info);
             info.fmtOk = true;
         }
 
         // após cada cadastro: a linha nova herda o amarelo da de cima, então é refeita em branco
-        async function formatNewRow(info, appendResp) {
+        async function formatNewRow(info, appendResp, photoLink) {
             try {
                 const m = /!?[A-Z]+(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
                 if (!m) return;
@@ -617,6 +641,13 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                         innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
                 ] });
             } catch (e) { console.warn('Formatação da nova linha não aplicada:', e); }
+            try {
+                const m2 = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
+                if (m2 && /^https?:\/\//i.test(photoLink || '')) {
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
+                        { requests: [linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink)] });
+                }
+            } catch (e) { console.warn('Link da foto não aplicado:', e); }
         }
 
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
@@ -676,7 +707,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     photoLink
                 ]] }
             );
-            await formatNewRow(info, appended);
+            await formatNewRow(info, appended, photoLink);
             return 'added';
         }
 
