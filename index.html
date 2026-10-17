@@ -93,6 +93,7 @@
             <div id="review-panel" class="hidden w-full bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 text-left">
                 <p class="text-sm font-bold text-amber-900">Confira os dados lidos pela IA</p>
                 <p class="text-xs text-amber-800">Corrija o que estiver errado e clique em Salvar. Nada vai para a planilha antes disso. <b>Pictogramas e classe de risco: confira sempre no rótulo</b>, a IA pode errar.</p>
+                <p id="review-note" class="hidden text-xs rounded-lg px-3 py-2 bg-amber-100 text-amber-900"></p>
                 <div id="review-fields" class="space-y-2"></div>
                 <div class="flex space-x-2 pt-1">
                     <button type="button" id="review-save" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg">✅ Salvar na planilha</button>
@@ -104,7 +105,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 10 — pastas, fotos, status, resumo e riscos</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 11 — pastas, fotos, status, resumo, riscos e FISPQ</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -299,6 +300,35 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
             if (/perigo/i.test(data.advertencia)) data.advertencia = 'Perigo';
             else if (/aten[cç][aã]o/i.test(data.advertencia)) data.advertencia = 'Atenção';
 
+            // dados de risco ausentes no rótulo -> consulta a FISPQ/FDS na internet
+            const risk = ['pictogramas', 'advertencia', 'classe_risco'];
+            const fromLabel = risk.filter(k => data[k] !== 'N/A');
+            data.origem_risco = fromLabel.length === 3 ? 'Rótulo' : 'Não encontrado';
+            data.fds_url = '';
+            data.fds_texto = 'Ver FDS';
+            if (fromLabel.length < 3 && data.nome && data.nome !== 'N/A') {
+                status.innerHTML = `🔎 Consultando a FISPQ/FDS na internet...${label}`;
+                try {
+                    const fds = await lookupFds(data, key);
+                    let filled = 0;
+                    risk.forEach(k => { if (data[k] === 'N/A' && fds[k]) { data[k] = fds[k]; filled++; } });
+                    if (fds.advertencia) {
+                        if (/perigo/i.test(data.advertencia)) data.advertencia = 'Perigo';
+                        else if (/aten[cç][aã]o/i.test(data.advertencia)) data.advertencia = 'Atenção';
+                    }
+                    if (filled) data.origem_risco = fromLabel.length ? 'Rótulo + FISPQ/FDS (web)' : 'FISPQ/FDS (web)';
+                    else if (fromLabel.length) data.origem_risco = 'Rótulo';
+                    if (fds.url) data.fds_url = fds.url;
+                } catch (e) {
+                    console.warn('Consulta à FDS falhou:', e);
+                    data._fdsError = e.message;
+                }
+            }
+            if (!data.fds_url && data.nome && data.nome !== 'N/A') {
+                data.fds_url = 'https://www.google.com/search?q=' + encodeURIComponent(`FISPQ FDS ${data.nome} ${data.fabricante && data.fabricante !== 'N/A' ? data.fabricante : ''}`.trim());
+                data.fds_texto = 'Buscar FISPQ';
+            }
+
             const reviewed = await reviewData(data, label);
             if (!reviewed) { data._skipped = true; return data; }
             Object.assign(data, reviewed);
@@ -313,7 +343,8 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
         const REVIEW_FIELDS = [
             ['nome', 'Nome do Produto'], ['validade', 'Data de Validade'], ['lote', 'Lote'],
             ['fabricante', 'Fabricante'], ['obs', 'Observação'], ['codigo', 'Código do Produto'],
-            ['pictogramas', 'Pictogramas GHS'], ['advertencia', 'Palavra de Advertência'], ['classe_risco', 'Classe de Risco']
+            ['pictogramas', 'Pictogramas GHS'], ['advertencia', 'Palavra de Advertência'], ['classe_risco', 'Classe de Risco'],
+            ['origem_risco', 'Origem dos dados de risco'], ['fds_url', 'Fonte FISPQ/FDS (link)']
         ];
 
         function reviewData(data, label) {
@@ -325,6 +356,14 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
                         <input data-k="${k}" type="text" value="${escapeHtml(data[k] ?? 'N/A')}"
                                class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal text-slate-800 bg-white">
                     </label>`).join('');
+                const note = document.getElementById('review-note');
+                if (data._fdsError) {
+                    note.textContent = `⚠️ Não consegui consultar a FISPQ/FDS na internet (${data._fdsError}). Preencha os campos de risco pelo rótulo ou pela FDS do fabricante.`;
+                    note.classList.remove('hidden');
+                } else if (/FDS/.test(data.origem_risco || '')) {
+                    note.textContent = '⚠️ Os dados de risco foram preenchidos a partir da FISPQ/FDS encontrada na internet (fonte no campo de link). Confira com o frasco e com a FDS do fabricante antes de salvar.';
+                    note.classList.remove('hidden');
+                } else { note.classList.add('hidden'); }
                 document.getElementById('status').innerHTML = `✏️ Aguardando sua conferência...${label}`;
                 panel.classList.remove('hidden');
                 panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -346,7 +385,7 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
 
         /* ---------- Google Planilhas: sempre a MESMA planilha ---------- */
         const SHEET_TITLE = 'Dados Extraídos - IA';
-        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade", "Pictogramas GHS", "Palavra de Advertência", "Classe de Risco"];
+        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade", "Pictogramas GHS", "Palavra de Advertência", "Classe de Risco", "Fonte FISPQ/FDS", "Origem do Risco"];
         let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
 
         async function api(url, method = 'GET', body) {
@@ -446,21 +485,21 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
             store('user_spreadsheet_id', id);
             sheetInfo = { id, locale: 'pt_BR', tab: 'Dados', sheetId, headerOk: true };
 
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:L1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:N1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
 
             try {
                 const black = { red: 0, green: 0, blue: 0 };
                 const solid = { style: 'SOLID', color: black };
-                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170, 220, 160, 220];
+                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170, 220, 160, 220, 180, 170];
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
                     requests: [
                         { repeatCell: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 12 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 14 },
                             cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
                             fields: 'userEnteredFormat(backgroundColor,textFormat)'
                         } },
                         { updateBorders: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 12 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 14 },
                             top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
                         } },
                         ...widths.map((px, i) => ({ updateDimensionProperties: {
@@ -604,7 +643,7 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
         const BLACK_SOLID = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
         const WHITE = { red: 1, green: 1, blue: 1 };
         const YELLOW = { red: 1, green: 1, blue: 0 };
-        const NCOLS = 12;
+        const NCOLS = 14;
 
         function rowRange(sheetId, from, to) {
             return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
@@ -624,10 +663,10 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
         }
 
         // transforma uma célula da coluna H em link clicável "Ver foto"
-        function linkCellRequest(sheetId, rowIndex, url) {
+        function linkCellRequest(sheetId, rowIndex, url, col = 7, text = 'Ver foto') {
             return { updateCells: {
-                range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 7, endColumnIndex: 8 },
-                rows: [{ values: [{ userEnteredValue: { stringValue: 'Ver foto' }, userEnteredFormat: { textFormat: { link: { uri: url } } } }] }],
+                range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: col, endColumnIndex: col + 1 },
+                rows: [{ values: [{ userEnteredValue: { stringValue: text }, userEnteredFormat: { textFormat: { link: { uri: url } } } }] }],
                 fields: 'userEnteredValue,userEnteredFormat.textFormat.link'
             } };
         }
@@ -658,7 +697,7 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
         }
 
         // após cada cadastro: a linha nova herda o amarelo da de cima, então é refeita em branco
-        async function formatNewRow(info, appendResp, photoLink) {
+        async function formatNewRow(info, appendResp, photoLink, fdsUrl, fdsText) {
             try {
                 const m = /!?[A-Z]+(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
                 if (!m) return;
@@ -675,10 +714,10 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
             } catch (e) { console.warn('Formatação da nova linha não aplicada:', e); }
             try {
                 const m2 = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
-                if (m2 && /^https?:\/\//i.test(photoLink || '')) {
-                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
-                        { requests: [linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink)] });
-                }
+                const links = [];
+                if (m2 && /^https?:\/\//i.test(photoLink || '')) links.push(linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink));
+                if (m2 && /^https?:\/\//i.test(fdsUrl || '')) links.push(linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, fdsUrl, 12, fdsText || 'Ver FDS'));
+                if (links.length) await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: links });
             } catch (e) { console.warn('Link da foto não aplicado:', e); }
         }
 
@@ -817,13 +856,13 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
             info.riskOk = true;
             try {
                 const tab = `'${info.tab.replace(/'/g, "''")}'`;
-                const rngJL = encodeURIComponent(tab + '!J1:L1');
+                const rngJL = encodeURIComponent(tab + '!J1:N1');
                 const h = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${rngJL}`);
                 const row = (h.values && h.values[0]) || [];
-                if (!(row.length >= 3 && row.every(Boolean))) {
-                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${rngJL}?valueInputOption=RAW`, 'PUT', { values: [HEADERS.slice(9, 12)] });
+                if (!(row.length >= 5 && row.every(Boolean))) {
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${rngJL}?valueInputOption=RAW`, 'PUT', { values: [HEADERS.slice(9, 14)] });
                     const w = (i, px) => ({ updateDimensionProperties: { range: { sheetId: info.sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } });
-                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [w(9, 220), w(10, 160), w(11, 220)] });
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [w(9, 220), w(10, 160), w(11, 220), w(12, 180), w(13, 170)] });
                 }
                 // cores da palavra de advertência (coluna K), uma vez por planilha
                 const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)))))`);
@@ -841,6 +880,54 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
                     ] });
                 }
             } catch (e) { if (e.code === 401) throw e; console.warn('Colunas de risco não configuradas:', e); }
+        }
+
+        /* ---------- FISPQ/FDS: consulta na internet quando o rótulo não traz os dados de risco ---------- */
+        async function lookupFds(data, key) {
+            const prompt = `Busque na internet a FISPQ/FDS (Ficha de Informações de Segurança de Produtos Químicos) deste produto, de preferência a do fabricante informado e em português:
+Produto: ${data.nome}
+Fabricante: ${data.fabricante}
+Código: ${data.codigo}
+
+Com base na seção de identificação de perigos (GHS/CLP) e no transporte da FDS encontrada, responda SOMENTE com um JSON válido, sem texto fora dele:
+{
+  "encontrado": true ou false,
+  "pictogramas": "nomes dos pictogramas GHS separados por vírgula (ex.: Corrosivo, Tóxico, Perigo ao meio ambiente aquático)",
+  "advertencia": "Perigo ou Atenção",
+  "classe_risco": "classificação de perigo e/ou classe de risco de transporte, ex.: Corrosivo - Classe 8 (ONU 1839)"
+}
+Se não encontrar a FDS deste produto específico, use "encontrado": false e "N/A" nos demais campos. Não invente nem complete de memória.`;
+
+            const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+                body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], tools: [{ google_search: {} }] })
+            });
+            const j = await res.json();
+            if (j.error) throw new Error(j.error.message);
+
+            const cand = (j.candidates && j.candidates[0]) || {};
+            const text = ((cand.content && cand.content.parts) || []).map(p => p.text || '').join('');
+            const m = text.match(/\{[\s\S]*\}/);
+            let parsed = {};
+            try { parsed = JSON.parse(m[0]); } catch (e) { /* resposta sem JSON: tratado como não encontrado */ }
+
+            const webs = (((cand.groundingMetadata || {}).groundingChunks) || []).map(c => c.web).filter(w => w && w.uri);
+            const pick = webs.find(w => /fispq|fds|sds|safety|seguran/i.test((w.title || '') + ' ' + w.uri)) || webs[0];
+
+            const clean = (v) => {
+                if (Array.isArray(v)) v = v.join(', ');
+                v = String(v || '').trim();
+                return v && !/^n\/?a$/i.test(v) ? v : '';
+            };
+            const found = (parsed.encontrado === true || String(parsed.encontrado).toLowerCase() === 'true');
+            return {
+                found,
+                pictogramas: found ? clean(parsed.pictogramas) : '',
+                advertencia: found ? clean(parsed.advertencia) : '',
+                classe_risco: found ? clean(parsed.classe_risco) : '',
+                url: pick ? pick.uri : ''
+            };
         }
 
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
@@ -871,7 +958,7 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
             await ensureSheetInFolder(info);
             await ensureStatusColumn(info);
             await ensureRiskColumns(info);
-            const range = `'${info.tab.replace(/'/g, "''")}'!A:L`;
+            const range = `'${info.tab.replace(/'/g, "''")}'!A:N`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
 
@@ -903,10 +990,12 @@ Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impre
                     "",
                     data.pictogramas || "N/A",
                     data.advertencia || "N/A",
-                    data.classe_risco || "N/A"
+                    data.classe_risco || "N/A",
+                    data.fds_url || "N/A",
+                    data.origem_risco || "N/A"
                 ]] }
             );
-            await formatNewRow(info, appended, photoLink);
+            await formatNewRow(info, appended, photoLink, data.fds_url, data.fds_texto);
             await addStatusForNewRow(info, appended);
             return 'added';
         }
