@@ -53,6 +53,23 @@
             <a id="open-sheet" href="#" target="_blank" rel="noopener"
                class="hidden w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition shadow">📄 Abrir minha planilha</a>
 
+            <div id="summary" class="hidden w-full rounded-xl border border-slate-200 p-3 space-y-2">
+                <div class="flex items-center justify-between">
+                    <p class="text-xs font-bold text-slate-600">Resumo da validade</p>
+                    <button type="button" onclick="loadSummary()" class="text-xs text-blue-600 hover:underline">↻ Atualizar</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div class="rounded-lg bg-red-100 text-red-800 py-2"><div id="sum-expired" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">Vencidos</div></div>
+                    <div class="rounded-lg bg-amber-100 text-amber-800 py-2"><div id="sum-soon" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">Vencem em 30 dias</div></div>
+                    <div class="rounded-lg bg-emerald-100 text-emerald-800 py-2"><div id="sum-ok" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">OK</div></div>
+                </div>
+                <p id="sum-extra" class="text-[11px] text-slate-500 text-center"></p>
+                <details id="sum-details" class="hidden text-xs text-slate-600">
+                    <summary class="cursor-pointer text-center">Ver quais</summary>
+                    <ul id="sum-list" class="mt-2 space-y-1 text-left"></ul>
+                </details>
+            </div>
+
             <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
                 <span>📸 Tirar Foto</span>
                 <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processFiles(event)">
@@ -87,7 +104,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 8 — pastas, fotos e status de validade</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 9 — pastas, fotos, status e resumo</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -135,6 +152,7 @@
                         document.getElementById('capture-section').classList.remove('hidden');
                         document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
                         updateSheetButton();
+                        loadSummary();
                     } else if (resp && resp.error) {
                         document.getElementById('auth-status').innerHTML =
                             `<span class="text-red-500">Erro: ${resp.error_description || resp.error}</span>`;
@@ -212,6 +230,7 @@
                 (notices.length ? '<br><br><span class="text-amber-600">' + notices.map(escapeHtml).join('<br>') + '</span>' : '');
             notices = [];
             busy = false;
+            loadSummary();
         }
 
         async function processOne(file, key, label) {
@@ -727,6 +746,56 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 const m = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
                 if (m && parseInt(m[1], 10) >= 2) await writeStatusFormulas(info, [parseInt(m[1], 10)]);
             } catch (e) { if (e.code === 401) throw e; console.warn('Status da nova linha não gravado:', e); }
+        }
+
+        /* ---------- Resumo da validade na tela ---------- */
+        function serialToBR(n) {
+            const d = new Date(Date.UTC(1899, 11, 30) + Math.round(n) * 86400000);
+            return `${pad2(d.getUTCDate())}/${pad2(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+        }
+
+        async function loadSummary() {
+            const box = document.getElementById('summary');
+            try {
+                const id = (sheetInfo && sheetInfo.id) || load('user_spreadsheet_id');
+                if (!id || !accessToken) { box.classList.add('hidden'); return; }
+                if (await isTrashed(id)) { box.classList.add('hidden'); return; }
+                const info = sheetInfo || await getSpreadsheetInfo(id);
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/${encodeURIComponent(tab + '!A2:B2000')}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER`);
+
+                const t = new Date();
+                const today = Math.floor(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 86400000) + 25569; // hoje, no calendário do Sheets
+                let expired = 0, soon = 0, ok = 0, nodate = 0;
+                const alerts = [];
+                (j.values || []).forEach(r => {
+                    if (!r || !r[0]) return;
+                    const v = r[1];
+                    if (typeof v !== 'number') { nodate++; return; }
+                    if (v < today) { expired++; alerts.push({ nome: r[0], v, tipo: 'v' }); }
+                    else if (v <= today + 30) { soon++; alerts.push({ nome: r[0], v, tipo: 's' }); }
+                    else ok++;
+                });
+
+                document.getElementById('sum-expired').textContent = expired;
+                document.getElementById('sum-soon').textContent = soon;
+                document.getElementById('sum-ok').textContent = ok;
+                const total = expired + soon + ok + nodate;
+                document.getElementById('sum-extra').textContent =
+                    `${total} produto${total === 1 ? '' : 's'} cadastrado${total === 1 ? '' : 's'}` + (nodate ? ` · ${nodate} sem data de validade` : '');
+
+                alerts.sort((a, b) => a.v - b.v);
+                const det = document.getElementById('sum-details');
+                document.getElementById('sum-list').innerHTML = alerts.slice(0, 15).map(a =>
+                    `<li class="${a.tipo === 'v' ? 'text-red-700' : 'text-amber-700'}">${a.tipo === 'v' ? '🔴' : '🟡'} <b>${escapeHtml(a.nome)}</b> — ${serialToBR(a.v)}</li>`).join('')
+                    + (alerts.length > 15 ? `<li class="text-slate-500">… e mais ${alerts.length - 15}</li>` : '');
+                det.classList.toggle('hidden', alerts.length === 0);
+                box.classList.remove('hidden');
+            } catch (e) {
+                if (e.code === 401) { box.classList.add('hidden'); return; }
+                console.warn('Resumo não carregado:', e);
+                box.classList.add('hidden');
+            }
         }
 
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
