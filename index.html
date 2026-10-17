@@ -87,6 +87,8 @@
         </div>
     </div>
 
+    <p class="text-[10px] text-slate-400 mt-4">Versão 5 — pastas e fotos no Drive</p>
+
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
         const GEMINI_MODEL = 'gemini-3.8-flash';
@@ -95,6 +97,7 @@
         let tokenClient;
         let accessToken = null;
         let busy = false;
+        let notices = [];
 
         function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
         function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
@@ -205,7 +208,9 @@
                 }
             }
             status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b> (pasta <b>Rótulos Extraídos</b> no seu Drive).<br><br>` +
-                results.join('<br>');
+                results.join('<br>') +
+                (notices.length ? '<br><br><span class="text-amber-600">' + notices.map(escapeHtml).join('<br>') + '</span>' : '');
+            notices = [];
             busy = false;
         }
 
@@ -487,6 +492,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             } catch (e) {
                 if (e.code === 401) throw e;
                 console.warn('Não foi possível guardar a planilha na pasta:', e);
+                notices.push(`⚠️ Planilha não foi movida para a pasta "${ROOT_FOLDER_TITLE}": ${e.message}`);
             }
         }
 
