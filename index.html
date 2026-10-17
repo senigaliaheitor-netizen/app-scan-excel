@@ -502,6 +502,57 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             info.headerOk = true;
         }
 
+        /* ---------- Formatação: só a 1ª linha amarela, resto branco, bordas em tudo ---------- */
+        const BLACK_SOLID = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
+        const WHITE = { red: 1, green: 1, blue: 1 };
+        const YELLOW = { red: 1, green: 1, blue: 0 };
+        const NCOLS = 8;
+
+        function rowRange(sheetId, from, to) {
+            return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
+        }
+        function formatRequests(sheetId, endRow) {
+            return [
+                { repeatCell: { range: rowRange(sheetId, 0, 1),
+                    cell: { userEnteredFormat: { backgroundColor: YELLOW, textFormat: { bold: true } } },
+                    fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                { repeatCell: { range: rowRange(sheetId, 1, endRow),
+                    cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
+                    fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                { updateBorders: { range: rowRange(sheetId, 0, endRow),
+                    top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
+                    innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
+            ];
+        }
+
+        // uma vez por sessão: corrige a planilha inteira (idempotente)
+        async function ensureFormatting(info) {
+            if (info.fmtOk) return;
+            try {
+                await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
+                    { requests: formatRequests(info.sheetId, 1000) });
+            } catch (e) { console.warn('Formatação geral não aplicada:', e); }
+            info.fmtOk = true;
+        }
+
+        // após cada cadastro: a linha nova herda o amarelo da de cima, então é refeita em branco
+        async function formatNewRow(info, appendResp) {
+            try {
+                const m = /!?[A-Z]+(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
+                if (!m) return;
+                const row = parseInt(m[1], 10);
+                if (row < 2) return;
+                await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
+                    { repeatCell: { range: rowRange(info.sheetId, row - 1, row),
+                        cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
+                        fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                    { updateBorders: { range: rowRange(info.sheetId, row - 1, row),
+                        top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
+                        innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
+                ] });
+            } catch (e) { console.warn('Formatação da nova linha não aplicada:', e); }
+        }
+
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
         function updateSheetButton() {
@@ -526,6 +577,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             const info = await ensureSpreadsheet();
             updateSheetButton();
             await ensurePhotoHeader(info);
+            await ensureFormatting(info);
             const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
@@ -537,11 +589,13 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     photoLink = await uploadLabelPhoto(file, data);
                 } catch (e) {
                     console.warn('Foto não enviada ao Drive:', e);
-                    data._photoError = e.message;
+                    data._photoError = /has not been used|is disabled|accessNotConfigured/i.test(e.message)
+                        ? 'a Google Drive API ainda não está ativada no projeto — veja o passo a passo'
+                        : e.message;
                 }
             }
 
-            await api(
+            const appended = await api(
                 `https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
                 'POST',
                 { values: [[
@@ -555,6 +609,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     photoLink
                 ]] }
             );
+            await formatNewRow(info, appended);
             return 'added';
         }
 
