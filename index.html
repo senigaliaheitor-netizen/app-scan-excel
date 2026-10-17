@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 5 — pastas e fotos no Drive</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 6 — pastas e fotos no Drive</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -351,15 +351,35 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             st.innerHTML = '<span class="text-green-600">✅ Planilha definida. Os próximos cadastros irão para ela.</span>';
         }
 
+        // arquivo apagado vai para a lixeira, mas continua legível pelo ID: precisa checar
+        async function isTrashed(id) {
+            try {
+                const f = await api(`https://www.googleapis.com/drive/v3/files/${id}?fields=trashed`);
+                return !!f.trashed;
+            } catch (e) {
+                if (e.code === 401) throw e;
+                return false; // sem como verificar (ex.: planilha informada por link): segue como válida
+            }
+        }
+
         async function ensureSpreadsheet() {
-            if (sheetInfo) return sheetInfo;
+            if (sheetInfo) {
+                if (!(await isTrashed(sheetInfo.id))) return sheetInfo;
+                // a planilha foi apagada durante o uso: esquece tudo e recomeça
+                store('user_spreadsheet_id', '');
+                sheetInfo = null;
+            }
 
             // 1) planilha já usada neste navegador
             const savedId = load('user_spreadsheet_id');
             if (savedId) {
                 try {
-                    sheetInfo = await getSpreadsheetInfo(savedId);
-                    return sheetInfo;
+                    if (await isTrashed(savedId)) {
+                        store('user_spreadsheet_id', ''); // está na lixeira: ignora e segue para buscar/criar
+                    } else {
+                        sheetInfo = await getSpreadsheetInfo(savedId);
+                        return sheetInfo;
+                    }
                 } catch (e) {
                     // só segue adiante se a planilha realmente não existe/não está acessível
                     if (e.code !== 404 && e.code !== 403) throw e;
