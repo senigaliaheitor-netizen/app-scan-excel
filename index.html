@@ -308,13 +308,15 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
             // 2) procura no Drive uma planilha já criada pelo app (a mais antiga)
             const q = `name='${SHEET_TITLE}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
-            let found;
+            let found = null;
             try {
                 found = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=10&fields=files(id,name)`);
             } catch (e) {
-                throw new Error(`Não consegui procurar a planilha existente (${e.message}). Para não criar outra, nada foi salvo. Ative a "Google Drive API" no projeto ou informe o link da planilha em "Opções avançadas".`);
+                // Sessão expirada: para aqui. Qualquer outro erro (ex.: Drive API desativada): segue e cria a primeira planilha desta conta.
+                if (e.code === 401) throw e;
+                console.warn('Busca no Drive falhou, seguindo para criação:', e);
             }
-            if (found.files && found.files.length) {
+            if (found && found.files && found.files.length) {
                 store('user_spreadsheet_id', found.files[0].id);
                 sheetInfo = await getSpreadsheetInfo(found.files[0].id);
                 return sheetInfo;
