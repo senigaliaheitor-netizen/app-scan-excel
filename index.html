@@ -36,6 +36,15 @@
                     <button type="button" onclick="saveSheetLink()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Usar</button>
                 </div>
                 <p id="sheet-link-status"></p>
+                <div class="pt-2 space-y-1">
+                    <label for="model-name" class="font-semibold text-slate-600">Modelo da IA</label>
+                    <div class="flex space-x-2">
+                        <input id="model-name" type="text" placeholder="padrão: gemini-3.8-flash"
+                               class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                        <button type="button" onclick="saveModel()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Usar</button>
+                    </div>
+                    <p id="model-status">Cada modelo tem a sua própria cota gratuita. Deixe em branco para o padrão.</p>
+                </div>
             </div>
         </details>
 
@@ -104,7 +113,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 14 — pastas, fotos, status e resumo</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 16 — pastas, fotos, status e resumo</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -138,6 +147,29 @@
             i.type = i.type === 'password' ? 'text' : 'password';
         }
         document.getElementById('gemini-key').value = load('gemini_key') || '';
+
+        /* ---------- Modelo da IA e mensagens de cota ---------- */
+        function getModel() { return (load('gemini_model') || '').trim() || GEMINI_MODEL; }
+        function saveModel() {
+            const v = document.getElementById('model-name').value.trim();
+            store('gemini_model', v);
+            document.getElementById('model-status').innerHTML = v
+                ? `<span class="text-green-600">✅ Usando o modelo <b>${escapeHtml(v)}</b> neste navegador.</span>`
+                : '<span class="text-green-600">✅ Voltou ao modelo padrão.</span>';
+        }
+        document.getElementById('model-name').value = load('gemini_model') || '';
+
+        function retrySeconds(msg) {
+            const m = /retry in\s+(?:(\d+)h)?\s*(?:(\d+)m)?\s*([\d.]+)s/i.exec(msg || '');
+            return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + parseFloat(m[3]) : null;
+        }
+        function quotaMessage(msg) {
+            const secs = retrySeconds(msg);
+            const lim = /limit:\s*(\d+)/i.exec(msg || '');
+            let quando = '';
+            if (secs) { const h = Math.floor(secs / 3600), mi = Math.ceil((secs % 3600) / 60); quando = ` Libera de novo em cerca de ${h ? h + 'h' : ''}${mi}min.`; }
+            return `Limite de uso da IA atingido${lim ? ` (limite de ${lim[1]} no plano gratuito)` : ''}.${quando} Para continuar agora: ative o faturamento no projeto do Google Cloud ou informe outro modelo em "Opções avançadas".`;
+        }
 
         /* ---------- Login Google ---------- */
         function initGoogleAuth() {
@@ -268,13 +300,14 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 generationConfig: { responseMimeType: 'application/json' }
             });
 
-            // o servidor da IA às vezes fica sobrecarregado: tenta de novo sozinho (3s, 6s, 12s)
+            // servidor ocupado: tenta de novo sozinho (3s, 6s, 12s). Cota esgotada: não adianta repetir
             const waits = [3000, 6000, 12000];
             let geminiData = null;
             for (let attempt = 0; ; attempt++) {
+                let waitMs = waits[Math.min(attempt, waits.length - 1)];
                 try {
                     const resp = await fetch(
-                        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+                        `https://generativelanguage.googleapis.com/v1beta/models/${getModel()}:generateContent`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
                         body: reqBody
@@ -282,15 +315,20 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     geminiData = await resp.json();
                     if (!geminiData.error) break;
                     const code = geminiData.error.code, msg = geminiData.error.message || '';
-                    const transient = [429, 500, 503, 504].includes(code) || /high demand|overloaded|unavailable|try again later/i.test(msg);
-                    if (!transient) throw new Error(`Gemini: ${msg}`);
+                    if (code === 429 || /quota|RESOURCE_EXHAUSTED/i.test(msg)) {
+                        const secs = retrySeconds(msg);
+                        if (secs !== null && secs <= 60) waitMs = Math.ceil(secs) * 1000 + 1000; // limite por minuto: espera e repete
+                        else throw new Error(quotaMessage(msg));                                   // limite do dia: repetir não resolve
+                    } else if (!([500, 503, 504].includes(code) || /high demand|overloaded|unavailable|try again later/i.test(msg))) {
+                        throw new Error(`Gemini: ${msg}`);
+                    }
                     if (attempt >= waits.length) throw new Error('A IA está com muita demanda no momento. Aguarde alguns minutos e envie de novo.');
                 } catch (e) {
                     // falha de rede também merece nova tentativa; qualquer outro erro encerra
                     if (!(e instanceof TypeError) || attempt >= waits.length) throw e;
                 }
                 status.innerHTML = `⏳ A IA está ocupada, tentando de novo (${attempt + 1}/${waits.length})...${label}`;
-                await new Promise(r => setTimeout(r, waits[attempt]));
+                await new Promise(r => setTimeout(r, waitMs));
             }
 
             const parts = geminiData.candidates?.[0]?.content?.parts;
@@ -675,6 +713,36 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             } catch (e) { if (e.code === 401) throw e; console.warn('Links perdidos não recuperados:', e); }
         }
 
+        /* ---------- Garantia de link clicável: lê a célula de volta e usa a fórmula HYPERLINK se preciso ---------- */
+        async function cellHasLink(info, tab, addr) {
+            const g = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?ranges=${encodeURIComponent(tab + '!' + addr)}&fields=sheets(data(rowData(values(formattedValue,hyperlink))))`);
+            const c = (((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData || [])[0];
+            const cell = c && c.values && c.values[0];
+            return !!(cell && cell.hyperlink);
+        }
+
+        async function verifyLinkCell(info, row, col, url, text) {
+            try {
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                const addr = `${col}${row}`;
+                if (await cellHasLink(info, tab, addr)) return true;
+
+                // método 2: fórmula HYPERLINK (testa ";" e "," conforme o idioma da planilha)
+                const guess = (info.locale || '').toLowerCase().startsWith('pt') ? ';' : ',';
+                const seps = [info.sep, guess, guess === ';' ? ',' : ';'].filter((v, i, a) => v && a.indexOf(v) === i);
+                const put = (val) => api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!' + addr)}?valueInputOption=USER_ENTERED`, 'PUT', { values: [[val]] });
+                for (const sep of seps) {
+                    try {
+                        await put(`=HYPERLINK("${url}"${sep}"${text}")`);
+                        if (await cellHasLink(info, tab, addr)) return true;
+                    } catch (e) { if (e.code === 401) throw e; }
+                }
+                await put(url); // deixa o endereço completo na célula, para copiar
+                notices.push(`⚠️ Não consegui deixar o link da foto clicável na linha ${row}. O endereço ficou escrito na célula ${addr}.`);
+                return false;
+            } catch (e) { if (e.code === 401) throw e; console.warn('Verificação do link falhou:', e); return false; }
+        }
+
         // uma vez por sessão: corrige a planilha inteira (idempotente)
         async function ensureFormatting(info) {
             if (info.fmtOk) return;
@@ -708,6 +776,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 if (m2 && /^https?:\/\//i.test(photoLink || '')) {
                     await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
                         { requests: [linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink)] });
+                    await verifyLinkCell(info, parseInt(m2[1], 10), 'H', photoLink, 'Ver foto');
                 }
             } catch (e) { console.warn('Link da foto não aplicado:', e);
                 notices.push(`⚠️ O link da foto não foi aplicado na planilha: ${e.message}`);
