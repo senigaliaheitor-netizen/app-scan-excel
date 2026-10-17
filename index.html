@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 13 — pastas, fotos, status e resumo</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 14 — pastas, fotos, status e resumo</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -258,26 +258,40 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
 }
 Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
-            const geminiResponse = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-goog-api-key': key
-                },
-                body: JSON.stringify({
-                    contents: [{
-                        parts: [
-                            { text: promptText },
-                            { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
-                        ]
-                    }],
-                    generationConfig: { responseMimeType: 'application/json' }
-                })
+            const reqBody = JSON.stringify({
+                contents: [{
+                    parts: [
+                        { text: promptText },
+                        { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
+                    ]
+                }],
+                generationConfig: { responseMimeType: 'application/json' }
             });
 
-            const geminiData = await geminiResponse.json();
-            if (geminiData.error) throw new Error(`Gemini: ${geminiData.error.message}`);
+            // o servidor da IA às vezes fica sobrecarregado: tenta de novo sozinho (3s, 6s, 12s)
+            const waits = [3000, 6000, 12000];
+            let geminiData = null;
+            for (let attempt = 0; ; attempt++) {
+                try {
+                    const resp = await fetch(
+                        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
+                        body: reqBody
+                    });
+                    geminiData = await resp.json();
+                    if (!geminiData.error) break;
+                    const code = geminiData.error.code, msg = geminiData.error.message || '';
+                    const transient = [429, 500, 503, 504].includes(code) || /high demand|overloaded|unavailable|try again later/i.test(msg);
+                    if (!transient) throw new Error(`Gemini: ${msg}`);
+                    if (attempt >= waits.length) throw new Error('A IA está com muita demanda no momento. Aguarde alguns minutos e envie de novo.');
+                } catch (e) {
+                    // falha de rede também merece nova tentativa; qualquer outro erro encerra
+                    if (!(e instanceof TypeError) || attempt >= waits.length) throw e;
+                }
+                status.innerHTML = `⏳ A IA está ocupada, tentando de novo (${attempt + 1}/${waits.length})...${label}`;
+                await new Promise(r => setTimeout(r, waits[attempt]));
+            }
 
             const parts = geminiData.candidates?.[0]?.content?.parts;
             if (!parts || !parts[0]?.text) {
