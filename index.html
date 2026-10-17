@@ -92,7 +92,7 @@
 
             <div id="review-panel" class="hidden w-full bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 text-left">
                 <p class="text-sm font-bold text-amber-900">Confira os dados lidos pela IA</p>
-                <p class="text-xs text-amber-800">Corrija o que estiver errado e clique em Salvar. Nada vai para a planilha antes disso.</p>
+                <p class="text-xs text-amber-800">Corrija o que estiver errado e clique em Salvar. Nada vai para a planilha antes disso. <b>Pictogramas e classe de risco: confira sempre no rótulo</b>, a IA pode errar.</p>
                 <div id="review-fields" class="space-y-2"></div>
                 <div class="flex space-x-2 pt-1">
                     <button type="button" id="review-save" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg">✅ Salvar na planilha</button>
@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 9 — pastas, fotos, status e resumo</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 10 — pastas, fotos, status, resumo e riscos</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -254,9 +254,13 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
   "lote": "Lote de fabricação",
   "fabricante": "Nome do fabricante",
   "obs": "Observações ou --- caso não haja",
-  "codigo": "Código numérico do produto/código de barras"
+  "codigo": "Código numérico do produto/código de barras",
+  "pictogramas": "Pictogramas de perigo GHS visíveis no rótulo, pelo nome e separados por vírgula (ex.: Corrosivo, Tóxico, Inflamável, Comburente, Irritante/Nocivo, Perigo à saúde, Perigo ao meio ambiente, Gás sob pressão, Explosivo)",
+  "advertencia": "Palavra de advertência impressa: Perigo ou Atenção",
+  "classe_risco": "Classe/subclasse de risco ou classificação de perigo impressa no rótulo (ex.: Corrosivo - Classe 8, Líquido inflamável - Classe 3)"
 }
-Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
+Se algum campo não for identificado na imagem, preencha o valor com "N/A".
+Para pictogramas, advertencia e classe_risco informe SOMENTE o que estiver impresso e visível no rótulo. Não deduza nem complete com seu conhecimento sobre o produto: se não houver pictograma ou classificação visível, use "N/A".`;
 
             const geminiResponse = await fetch(
                 `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
@@ -287,6 +291,14 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             const cleanJsonText = parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
             const data = JSON.parse(cleanJsonText);
 
+            ['pictogramas', 'advertencia', 'classe_risco'].forEach(k => {
+                let v = data[k];
+                if (Array.isArray(v)) v = v.join(', ');
+                data[k] = (v && String(v).trim()) ? String(v).trim() : 'N/A';
+            });
+            if (/perigo/i.test(data.advertencia)) data.advertencia = 'Perigo';
+            else if (/aten[cç][aã]o/i.test(data.advertencia)) data.advertencia = 'Atenção';
+
             const reviewed = await reviewData(data, label);
             if (!reviewed) { data._skipped = true; return data; }
             Object.assign(data, reviewed);
@@ -300,7 +312,8 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         /* ---------- Conferência antes de salvar ---------- */
         const REVIEW_FIELDS = [
             ['nome', 'Nome do Produto'], ['validade', 'Data de Validade'], ['lote', 'Lote'],
-            ['fabricante', 'Fabricante'], ['obs', 'Observação'], ['codigo', 'Código do Produto']
+            ['fabricante', 'Fabricante'], ['obs', 'Observação'], ['codigo', 'Código do Produto'],
+            ['pictogramas', 'Pictogramas GHS'], ['advertencia', 'Palavra de Advertência'], ['classe_risco', 'Classe de Risco']
         ];
 
         function reviewData(data, label) {
@@ -333,7 +346,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
         /* ---------- Google Planilhas: sempre a MESMA planilha ---------- */
         const SHEET_TITLE = 'Dados Extraídos - IA';
-        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade"];
+        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade", "Pictogramas GHS", "Palavra de Advertência", "Classe de Risco"];
         let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
 
         async function api(url, method = 'GET', body) {
@@ -433,21 +446,21 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             store('user_spreadsheet_id', id);
             sheetInfo = { id, locale: 'pt_BR', tab: 'Dados', sheetId, headerOk: true };
 
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:I1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:L1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
 
             try {
                 const black = { red: 0, green: 0, blue: 0 };
                 const solid = { style: 'SOLID', color: black };
-                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170];
+                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170, 220, 160, 220];
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
                     requests: [
                         { repeatCell: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 9 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 12 },
                             cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
                             fields: 'userEnteredFormat(backgroundColor,textFormat)'
                         } },
                         { updateBorders: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 9 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 12 },
                             top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
                         } },
                         ...widths.map((px, i) => ({ updateDimensionProperties: {
@@ -591,7 +604,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         const BLACK_SOLID = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
         const WHITE = { red: 1, green: 1, blue: 1 };
         const YELLOW = { red: 1, green: 1, blue: 0 };
-        const NCOLS = 9;
+        const NCOLS = 12;
 
         function rowRange(sheetId, from, to) {
             return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
@@ -798,6 +811,38 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             }
         }
 
+        /* ---------- Colunas de risco (J, K, L) ---------- */
+        async function ensureRiskColumns(info) {
+            if (info.riskOk) return;
+            info.riskOk = true;
+            try {
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                const rngJL = encodeURIComponent(tab + '!J1:L1');
+                const h = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${rngJL}`);
+                const row = (h.values && h.values[0]) || [];
+                if (!(row.length >= 3 && row.every(Boolean))) {
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${rngJL}?valueInputOption=RAW`, 'PUT', { values: [HEADERS.slice(9, 12)] });
+                    const w = (i, px) => ({ updateDimensionProperties: { range: { sheetId: info.sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 }, properties: { pixelSize: px }, fields: 'pixelSize' } });
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [w(9, 220), w(10, 160), w(11, 220)] });
+                }
+                // cores da palavra de advertência (coluna K), uma vez por planilha
+                const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)))))`);
+                const mine = (meta.sheets || []).find(sh => sh.properties.sheetId === info.sheetId) || {};
+                const has = (mine.conditionalFormats || []).some(cf =>
+                    ((cf.booleanRule && cf.booleanRule.condition && cf.booleanRule.condition.values) || []).some(v => v.userEnteredValue === 'Perigo'));
+                if (!has) {
+                    const range = [{ sheetId: info.sheetId, startRowIndex: 1, endRowIndex: 5000, startColumnIndex: 10, endColumnIndex: 11 }];
+                    const rule = (text, bg, fg) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: range, booleanRule: {
+                        condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: text }] },
+                        format: { backgroundColor: bg, textFormat: { foregroundColor: fg, bold: true } } } } } });
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
+                        rule('Atenção', { red: 1, green: 0.9, blue: 0.6 }, { red: 0.55, green: 0.35, blue: 0 }),
+                        rule('Perigo', { red: 0.96, green: 0.78, blue: 0.76 }, { red: 0.61, green: 0, blue: 0 })
+                    ] });
+                }
+            } catch (e) { if (e.code === 401) throw e; console.warn('Colunas de risco não configuradas:', e); }
+        }
+
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
         function updateSheetButton() {
@@ -825,7 +870,8 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             await ensureFormatting(info);
             await ensureSheetInFolder(info);
             await ensureStatusColumn(info);
-            const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
+            await ensureRiskColumns(info);
+            const range = `'${info.tab.replace(/'/g, "''")}'!A:L`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
 
@@ -853,7 +899,11 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     data.obs || "N/A",
                     asText(data.codigo || "N/A"),
                     nowForSheet(info.locale),
-                    photoLink
+                    photoLink,
+                    "",
+                    data.pictogramas || "N/A",
+                    data.advertencia || "N/A",
+                    data.classe_risco || "N/A"
                 ]] }
             );
             await formatNewRow(info, appended, photoLink);
