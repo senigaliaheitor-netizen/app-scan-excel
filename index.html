@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan para Google Planilhas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Carregamento síncrono do SDK do Google para garantir inicialização imediata -->
     <script src="https://accounts.google.com/gsi/client" onload="initGoogleAuth()"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
@@ -49,7 +48,6 @@
         let tokenClient;
         let accessToken = null;
 
-        // Inicializa o cliente OAuth assim que o script do Google é carregado
         function initGoogleAuth() {
             try {
                 if (window.google && google.accounts && google.accounts.oauth2) {
@@ -63,16 +61,13 @@
                                 document.getElementById('capture-section').classList.remove('hidden');
                                 document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
                             } else if (tokenResponse.error) {
-                                console.error('Erro de Autenticação:', tokenResponse);
                                 document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Erro: ${tokenResponse.error_description || tokenResponse.error}</span>`;
                             }
                         },
                     });
-                    document.getElementById('auth-status').innerText = '';
                 }
             } catch (err) {
-                console.error("Falha ao inicializar Google Auth:", err);
-                document.getElementById('auth-status').innerText = 'Erro ao carregar o login do Google.';
+                console.error(err);
             }
         }
 
@@ -80,24 +75,16 @@
             const statusEl = document.getElementById('auth-status');
             
             if (!tokenClient) {
-                statusEl.innerText = 'Carregando serviços do Google... Tente em instantes.';
                 initGoogleAuth();
-                if (!tokenClient) return;
             }
 
-            statusEl.innerText = 'Abrindo autenticação...';
-            
-            // Solicita permissão ao usuário
-            try {
-                if (accessToken === null) {
-                    tokenClient.requestAccessToken({ prompt: 'consent' });
-                } else {
-                    tokenClient.requestAccessToken({ prompt: '' });
-                }
-            } catch (err) {
-                console.error("Erro ao solicitar token:", err);
-                statusEl.innerText = 'Permita janelas pop-up no Safari e tente novamente.';
+            if (!tokenClient) {
+                statusEl.innerText = 'Aguarde o carregamento do serviço Google...';
+                return;
             }
+
+            statusEl.innerText = 'Redirecionando para login...';
+            tokenClient.requestAccessToken({ prompt: 'consent' });
         }
 
         async function processImage(event) {
