@@ -42,7 +42,7 @@
     <script>
         // CONFIGURAÇÕES DA APLICAÇÃO
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
-        const GEMINI_API_KEY = 'AQ.Ab8RN6LDQwYYpiT5lPzhfrcnw2t9NOajWxY3STLWJr5Tcu3NnQ'; 
+        const GEMINI_API_KEY = 'AQ.Ab8RN6LqUs7M7xQMDkNTzChyadQQ0Jb8AoQ_qih0l81zNWmcFA'; 
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
         let tokenClient;
@@ -83,7 +83,7 @@
                 return;
             }
 
-            statusEl.innerText = 'Redirecionando para login...';
+            statusEl.innerText = 'Abrindo autenticação...';
             tokenClient.requestAccessToken({ prompt: 'consent' });
         }
 
@@ -114,6 +114,7 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
 }
 Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não inclua marcações de bloco de código markdown no resultado final.`;
 
+                // Chamada enviando a chave no cabeçalho x-goog-api-key
                 const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
                     method: 'POST',
                     headers: { 
