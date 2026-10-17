@@ -50,6 +50,8 @@
         <!-- Captura -->
         <div id="capture-section" class="w-full flex flex-col items-center space-y-4 hidden">
             <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
+            <a id="open-sheet" href="#" target="_blank" rel="noopener"
+               class="hidden w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition shadow">📄 Abrir minha planilha</a>
 
             <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
                 <span>📸 Tirar Foto</span>
@@ -119,6 +121,7 @@
                         document.getElementById('auth-section').classList.add('hidden');
                         document.getElementById('capture-section').classList.remove('hidden');
                         document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
+                        updateSheetButton();
                     } else if (resp && resp.error) {
                         document.getElementById('auth-status').innerHTML =
                             `<span class="text-red-500">Erro: ${resp.error_description || resp.error}</span>`;
@@ -181,13 +184,15 @@
                 const label = files.length > 1 ? ` (${i + 1}/${files.length})` : '';
                 try {
                     const data = await processOne(files[i], key, label);
-                    results.push(`✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}`);
+                    results.push(data._dup
+                        ? `⚠️ <b>${escapeHtml(data.nome)}</b> (lote ${escapeHtml(data.lote)}) já estava cadastrado — não foi repetido.`
+                        : `✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}`);
                 } catch (error) {
                     console.error(error);
                     results.push(`<span class="text-red-500">❌ ${escapeHtml(files[i].name || 'foto')}: ${escapeHtml(error.message)}</span>`);
                 }
             }
-            status.innerHTML = `🎉 <b>Concluído!</b> Dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b>.<br><br>` +
+            status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b>.<br><br>` +
                 results.join('<br>');
             busy = false;
         }
@@ -247,7 +252,8 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             const data = JSON.parse(cleanJsonText);
 
             status.innerHTML = `⏳ Salvando na planilha Google...${label}`;
-            await saveToUserGoogleSheet(data);
+            const outcome = await saveToUserGoogleSheet(data);
+            data._dup = (outcome === 'duplicate');
             return data;
         }
 
@@ -377,9 +383,33 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             return /^\d+$/.test(s) ? `'${s}` : s;
         }
 
+        function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
+
+        function updateSheetButton() {
+            const id = (sheetInfo && sheetInfo.id) || load('user_spreadsheet_id');
+            const a = document.getElementById('open-sheet');
+            if (id) {
+                a.href = `https://docs.google.com/spreadsheets/d/${id}/edit`;
+                a.classList.remove('hidden');
+            }
+        }
+
+        async function isDuplicate(info, tabRange, data) {
+            const lote = norm(data.lote), cod = norm(data.codigo);
+            // sem lote e sem código não dá para afirmar que é repetido
+            if ((lote === '' || lote === 'n/a') && (cod === '' || cod === 'n/a')) return false;
+            const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tabRange)}`);
+            const rows = (j.values || []).slice(1); // pula o cabeçalho
+            return rows.some(r => norm(r[0]) === norm(data.nome) && norm(r[2]) === lote && norm(r[5]) === cod);
+        }
+
         async function saveToUserGoogleSheet(data) {
             const info = await ensureSpreadsheet();
+            updateSheetButton();
             const range = `'${info.tab.replace(/'/g, "''")}'!A:G`;
+
+            if (await isDuplicate(info, range, data)) return 'duplicate';
+
             await api(
                 `https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
                 'POST',
@@ -393,6 +423,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     nowForSheet(info.locale)
                 ]] }
             );
+            return 'added';
         }
 
         /* ---------- Arrastar, soltar e colar (desktop) ---------- */
