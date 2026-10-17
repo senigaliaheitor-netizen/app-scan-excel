@@ -104,7 +104,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 9 — pastas, fotos, status e resumo</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 13 — pastas, fotos, status e resumo</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -600,10 +600,10 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             return [
                 { repeatCell: { range: rowRange(sheetId, 0, 1),
                     cell: { userEnteredFormat: { backgroundColor: YELLOW, textFormat: { bold: true } } },
-                    fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
                 { repeatCell: { range: rowRange(sheetId, 1, endRow),
                     cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
-                    fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
                 { updateBorders: { range: rowRange(sheetId, 0, endRow),
                     top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
                     innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
@@ -633,6 +633,34 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             } catch (e) { if (e.code === 401) throw e; console.warn('Links antigos não convertidos:', e); }
         }
 
+        // links que já se perderam ("Ver foto" sem link): recupera a foto na pasta Imagens pelo nome do arquivo
+        async function repairPhotoLinks(info) {
+            try {
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                const g = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?ranges=${encodeURIComponent(tab + '!H2:H1000')}&fields=sheets(data(rowData(values(formattedValue,hyperlink))))`);
+                const rows = (((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData) || [];
+                const broken = [];
+                rows.forEach((r, i) => {
+                    const c = r && r.values && r.values[0];
+                    if (c && c.formattedValue === 'Ver foto' && !c.hyperlink) broken.push(i + 2);
+                });
+                if (!broken.length) return;
+
+                const ac = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!A2:C1000')}`);
+                const folder = await ensureImagesFolder();
+                const q = `'${folder}' in parents and trashed=false`;
+                const fl = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&pageSize=1000&orderBy=createdTime desc&fields=files(name,webViewLink)`);
+                const reqs = [];
+                broken.forEach(row => {
+                    const r = (ac.values || [])[row - 2] || [];
+                    const prefix = `${safeName(r[0]) || 'rotulo'}_${safeName(r[2]) || 'sem-lote'}_`;
+                    const f = (fl.files || []).find(x => x.name && x.name.startsWith(prefix) && x.webViewLink);
+                    if (f) reqs.push(linkCellRequest(info.sheetId, row - 1, f.webViewLink));
+                });
+                if (reqs.length) await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: reqs });
+            } catch (e) { if (e.code === 401) throw e; console.warn('Links perdidos não recuperados:', e); }
+        }
+
         // uma vez por sessão: corrige a planilha inteira (idempotente)
         async function ensureFormatting(info) {
             if (info.fmtOk) return;
@@ -641,6 +669,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     { requests: formatRequests(info.sheetId, 1000) });
             } catch (e) { console.warn('Formatação geral não aplicada:', e); }
             await linkExistingPhotoCells(info);
+            await repairPhotoLinks(info);
             info.fmtOk = true;
         }
 
@@ -654,7 +683,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
                     { repeatCell: { range: rowRange(info.sheetId, row - 1, row),
                         cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
-                        fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                        fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
                     { updateBorders: { range: rowRange(info.sheetId, row - 1, row),
                         top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
                         innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
@@ -666,7 +695,9 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
                         { requests: [linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink)] });
                 }
-            } catch (e) { console.warn('Link da foto não aplicado:', e); }
+            } catch (e) { console.warn('Link da foto não aplicado:', e);
+                notices.push(`⚠️ O link da foto não foi aplicado na planilha: ${e.message}`);
+            }
         }
 
         /* ---------- Status de validade (coluna I, colorida) ---------- */
