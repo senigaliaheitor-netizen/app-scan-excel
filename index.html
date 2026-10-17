@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan para Google Planilhas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" onload="initGoogleAuth()"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
 
@@ -13,19 +12,25 @@
         <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
         <p class="text-sm text-slate-500 text-center">Tire uma foto para extrair todos os dados do rótulo diretamente na sua conta do Google.</p>
 
-        <!-- Seção de Login -->
+        <!-- Chave Gemini (fica só no seu navegador, não no código) -->
+        <div class="w-full space-y-1">
+            <label class="text-xs font-semibold text-slate-600">Chave da API Gemini</label>
+            <input id="gemini-key" type="password" placeholder="Cole sua chave aqui"
+                   class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm" onchange="saveKey()">
+        </div>
+
+        <!-- Login -->
         <div id="auth-section" class="w-full flex flex-col items-center space-y-3">
             <button id="authorize_button" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center space-x-2 w-full transition shadow cursor-pointer">
-                <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/></svg>
                 <span id="auth_button_text">Conectar com Google</span>
             </button>
             <p id="auth-status" class="text-xs text-slate-500 text-center"></p>
         </div>
 
-        <!-- Seção de Captura e Envio -->
+        <!-- Captura -->
         <div id="capture-section" class="w-full flex flex-col items-center space-y-4 hidden">
             <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
-            
+
             <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
                 <span>📸 Tirar Foto / Selecionar</span>
                 <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processImage(event)">
@@ -40,62 +45,76 @@
     </div>
 
     <script>
-        // CONFIGURAÇÕES DA APLICAÇÃO
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
-        const GEMINI_API_KEY = 'AQ.Ab8RN6LqUs7M7xQMDkNTzChyadQQ0Jb8AoQ_qih0l81zNWmcFA'; 
+        const GEMINI_MODEL = 'gemini-2.5-flash';
         const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 
         let tokenClient;
         let accessToken = null;
 
+        function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+        function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+        function saveKey() {
+            store('gemini_key', document.getElementById('gemini-key').value.trim());
+        }
+        function getKey() {
+            return document.getElementById('gemini-key').value.trim() || load('gemini_key') || '';
+        }
+        document.getElementById('gemini-key').value = load('gemini_key') || '';
+
         function initGoogleAuth() {
-            try {
-                if (window.google && google.accounts && google.accounts.oauth2) {
-                    tokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: CLIENT_ID,
-                        scope: SCOPES,
-                        callback: (tokenResponse) => {
-                            if (tokenResponse && tokenResponse.access_token) {
-                                accessToken = tokenResponse.access_token;
-                                document.getElementById('auth-section').classList.add('hidden');
-                                document.getElementById('capture-section').classList.remove('hidden');
-                                document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
-                            } else if (tokenResponse.error) {
-                                document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Erro: ${tokenResponse.error_description || tokenResponse.error}</span>`;
-                            }
-                        },
-                    });
-                }
-            } catch (err) {
-                console.error(err);
-            }
+            if (!(window.google && google.accounts && google.accounts.oauth2)) return;
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: (resp) => {
+                    if (resp && resp.access_token) {
+                        accessToken = resp.access_token;
+                        document.getElementById('auth-section').classList.add('hidden');
+                        document.getElementById('capture-section').classList.remove('hidden');
+                        document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
+                    } else if (resp && resp.error) {
+                        document.getElementById('auth-status').innerHTML =
+                            `<span class="text-red-500">Erro: ${resp.error_description || resp.error}</span>`;
+                    }
+                },
+            });
         }
 
         function handleAuthClick() {
             const statusEl = document.getElementById('auth-status');
-            
-            if (!tokenClient) {
-                initGoogleAuth();
-            }
-
+            if (!tokenClient) initGoogleAuth();
             if (!tokenClient) {
                 statusEl.innerText = 'Aguarde o carregamento do serviço Google...';
                 return;
             }
-
             statusEl.innerText = 'Abrindo autenticação...';
-            tokenClient.requestAccessToken({ prompt: 'consent' });
+            tokenClient.requestAccessToken({ prompt: '' });
+        }
+
+        function convertBase64(file) {
+            return new Promise((resolve, reject) => {
+                const r = new FileReader();
+                r.onload = () => resolve(r.result);
+                r.onerror = reject;
+                r.readAsDataURL(file);
+            });
         }
 
         async function processImage(event) {
             const file = event.target.files[0];
             if (!file) return;
 
-            const preview = document.getElementById('image-preview');
-            preview.src = URL.createObjectURL(file);
-            document.getElementById('preview-container').classList.remove('hidden');
-
             const status = document.getElementById('status');
+            const key = getKey();
+            if (!key) {
+                status.innerHTML = '<span class="text-red-500">❌ Cole a chave da API Gemini no campo acima.</span>';
+                return;
+            }
+
+            document.getElementById('image-preview').src = URL.createObjectURL(file);
+            document.getElementById('preview-container').classList.remove('hidden');
             status.innerHTML = '⏳ Analisando imagem com IA...';
 
             try {
@@ -112,14 +131,14 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
   "obs": "Observações ou --- caso não haja",
   "codigo": "Código numérico do produto/código de barras"
 }
-Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não inclua marcações de bloco de código markdown no resultado final.`;
+Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
-                // Chamada enviando a chave no cabeçalho x-goog-api-key
-                const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
+                const geminiResponse = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
                     method: 'POST',
-                    headers: { 
+                    headers: {
                         'Content-Type': 'application/json',
-                        'x-goog-api-key': GEMINI_API_KEY
+                        'x-goog-api-key': key
                     },
                     body: JSON.stringify({
                         contents: [{
@@ -127,32 +146,30 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não
                                 { text: promptText },
                                 { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
                             ]
-                        }]
+                        }],
+                        generationConfig: { responseMimeType: 'application/json' }
                     })
                 });
 
                 const geminiData = await geminiResponse.json();
+                if (geminiData.error) throw new Error(`Gemini: ${geminiData.error.message}`);
 
-                if (geminiData.error) {
-                    throw new Error(`Google API: ${geminiData.error.message}`);
+                const parts = geminiData.candidates?.[0]?.content?.parts;
+                if (!parts || !parts[0]?.text) {
+                    throw new Error('A IA não retornou um resultado válido. Tente novamente com boa iluminação.');
                 }
 
-                if (!geminiData.candidates || !geminiData.candidates[0] || !geminiData.candidates[0].content) {
-                    throw new Error('A IA não retornou um resultado válido. Tente capturar novamente com boa iluminação.');
-                }
-
-                const rawText = geminiData.candidates[0].content.parts[0].text;
-                const cleanJsonText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
+                const cleanJsonText = parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
                 const data = JSON.parse(cleanJsonText);
 
                 status.innerHTML = `✅ <b>Extraído com sucesso:</b><br>` +
-                `<b>Nome:</b> ${data.nome}<br>` +
-                `<b>Validade:</b> ${data.validade}<br>` +
-                `<b>Lote:</b> ${data.lote}<br>` +
-                `<b>Fabricante:</b> ${data.fabricante}<br>` +
-                `<b>OBS:</b> ${data.obs}<br>` +
-                `<b>Código:</b> ${data.codigo}<br><br>` +
-                `⏳ Salvando na planilha Google...`;
+                    `<b>Nome:</b> ${data.nome}<br>` +
+                    `<b>Validade:</b> ${data.validade}<br>` +
+                    `<b>Lote:</b> ${data.lote}<br>` +
+                    `<b>Fabricante:</b> ${data.fabricante}<br>` +
+                    `<b>OBS:</b> ${data.obs}<br>` +
+                    `<b>Código:</b> ${data.codigo}<br><br>` +
+                    `⏳ Salvando na planilha Google...`;
 
                 await saveToUserGoogleSheet(data);
                 status.innerHTML = `🎉 <b>Sucesso!</b> Dados salvos na planilha <b>'Dados Extraídos - IA'</b> no seu Google Drive!`;
@@ -161,66 +178,52 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não
                 console.error(error);
                 status.innerHTML = `<span class="text-red-500">❌ Erro ao processar: ${error.message}</span>`;
             }
+            event.target.value = '';
         }
 
-        function convertBase64(file) {
-            return new Promise((resolve, reject) => {
-                const fileReader = new FileReader();
-                fileReader.readAsDataURL(file);
-                fileReader.onload = () => resolve(fileReader.result);
-                fileReader.onerror = (error) => reject(error);
+        async function sheetsFetch(url, body) {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
             });
+            const json = await res.json();
+            if (json.error) {
+                if (json.error.code === 401) {
+                    throw new Error('Sessão do Google expirou. Recarregue a página e conecte de novo.');
+                }
+                throw new Error(`Sheets: ${json.error.message}`);
+            }
+            return json;
         }
 
         async function saveToUserGoogleSheet(data) {
-            let spreadsheetId = localStorage.getItem('user_spreadsheet_id');
+            let spreadsheetId = load('user_spreadsheet_id');
+            const appendUrl = (id) =>
+                `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`;
 
             if (!spreadsheetId) {
-                const createResponse = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        properties: { title: 'Dados Extraídos - IA' },
-                        sheets: [{ properties: { title: 'Dados' } }]
-                    })
+                const created = await sheetsFetch('https://sheets.googleapis.com/v4/spreadsheets', {
+                    properties: { title: 'Dados Extraídos - IA' },
+                    sheets: [{ properties: { title: 'Dados' } }]
                 });
-                const createData = await createResponse.json();
-                spreadsheetId = createData.spreadsheetId;
-                localStorage.setItem('user_spreadsheet_id', spreadsheetId);
+                spreadsheetId = created.spreadsheetId;
+                store('user_spreadsheet_id', spreadsheetId);
 
-                await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ 
-                        values: [["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "OBS", "Código do Produto"]] 
-                    })
+                await sheetsFetch(appendUrl(spreadsheetId), {
+                    values: [["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "OBS", "Código do Produto"]]
                 });
             }
 
-            await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ 
-                    values: [[
-                        data.nome || "N/A", 
-                        data.validade || "N/A", 
-                        data.lote || "N/A", 
-                        data.fabricante || "N/A", 
-                        data.obs || "N/A", 
-                        data.codigo || "N/A"
-                    ]] 
-                })
+            await sheetsFetch(appendUrl(spreadsheetId), {
+                values: [[
+                    data.nome || "N/A", data.validade || "N/A", data.lote || "N/A",
+                    data.fabricante || "N/A", data.obs || "N/A", data.codigo || "N/A"
+                ]]
             });
         }
     </script>
+    <!-- Carregado depois das funções, para o onload sempre achar initGoogleAuth -->
+    <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
 </body>
 </html>
