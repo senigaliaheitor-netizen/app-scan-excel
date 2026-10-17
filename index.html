@@ -5,7 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan para Google Planilhas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Carregamento síncrono do SDK do Google para garantir inicialização imediata -->
+    <script src="https://accounts.google.com/gsi/client" onload="initGoogleAuth()"></script>
 </head>
 <body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
 
@@ -13,13 +14,16 @@
         <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
         <p class="text-sm text-slate-500 text-center">Tire uma foto para extrair todos os dados do rótulo diretamente na sua conta do Google.</p>
 
-        <div id="auth-section" class="w-full flex justify-center">
-            <button id="authorize_button" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center space-x-2 w-full transition shadow">
+        <!-- Seção de Login -->
+        <div id="auth-section" class="w-full flex flex-col items-center space-y-3">
+            <button id="authorize_button" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center space-x-2 w-full transition shadow cursor-pointer">
                 <svg class="w-5 h-5" viewBox="0 0 24 24"><path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/></svg>
-                <span>Conectar com Google</span>
+                <span id="auth_button_text">Conectar com Google</span>
             </button>
+            <p id="auth-status" class="text-xs text-slate-500 text-center"></p>
         </div>
 
+        <!-- Seção de Captura e Envio -->
         <div id="capture-section" class="w-full flex flex-col items-center space-y-4 hidden">
             <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
             
@@ -45,23 +49,55 @@
         let tokenClient;
         let accessToken = null;
 
-        window.onload = function() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: (tokenResponse) => {
-                    if (tokenResponse && tokenResponse.access_token) {
-                        accessToken = tokenResponse.access_token;
-                        document.getElementById('auth-section').classList.add('hidden');
-                        document.getElementById('capture-section').classList.remove('hidden');
-                        document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
-                    }
-                },
-            });
-        };
+        // Inicializa o cliente OAuth assim que o script do Google é carregado
+        function initGoogleAuth() {
+            try {
+                if (window.google && google.accounts && google.accounts.oauth2) {
+                    tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: (tokenResponse) => {
+                            if (tokenResponse && tokenResponse.access_token) {
+                                accessToken = tokenResponse.access_token;
+                                document.getElementById('auth-section').classList.add('hidden');
+                                document.getElementById('capture-section').classList.remove('hidden');
+                                document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
+                            } else if (tokenResponse.error) {
+                                console.error('Erro de Autenticação:', tokenResponse);
+                                document.getElementById('auth-status').innerHTML = `<span class="text-red-500">Erro: ${tokenResponse.error_description || tokenResponse.error}</span>`;
+                            }
+                        },
+                    });
+                    document.getElementById('auth-status').innerText = '';
+                }
+            } catch (err) {
+                console.error("Falha ao inicializar Google Auth:", err);
+                document.getElementById('auth-status').innerText = 'Erro ao carregar o login do Google.';
+            }
+        }
 
         function handleAuthClick() {
-            tokenClient.requestAccessToken({prompt: 'consent'});
+            const statusEl = document.getElementById('auth-status');
+            
+            if (!tokenClient) {
+                statusEl.innerText = 'Carregando serviços do Google... Tente em instantes.';
+                initGoogleAuth();
+                if (!tokenClient) return;
+            }
+
+            statusEl.innerText = 'Abrindo autenticação...';
+            
+            // Solicita permissão ao usuário
+            try {
+                if (accessToken === null) {
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                } else {
+                    tokenClient.requestAccessToken({ prompt: '' });
+                }
+            } catch (err) {
+                console.error("Erro ao solicitar token:", err);
+                statusEl.innerText = 'Permita janelas pop-up no Safari e tente novamente.';
+            }
         }
 
         async function processImage(event) {
@@ -91,7 +127,6 @@ Retorne estritamente em formato JSON válido com as seguintes chaves:
 }
 Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não inclua marcações de bloco de código markdown no resultado final.`;
 
-                // Chamada com o cabeçalho x-goog-api-key e modelo gemini-1.5-flash
                 const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent`, {
                     method: 'POST',
                     headers: { 
@@ -186,3 +221,18 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A". Não
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
+                body: JSON.stringify({ 
+                    values: [[
+                        data.nome || "N/A", 
+                        data.validade || "N/A", 
+                        data.lote || "N/A", 
+                        data.fabricante || "N/A", 
+                        data.obs || "N/A", 
+                        data.codigo || "N/A"
+                    ]] 
+                })
+            });
+        }
+    </script>
+</body>
+</html>
