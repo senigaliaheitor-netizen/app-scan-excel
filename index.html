@@ -204,7 +204,7 @@
                     results.push(`<span class="text-red-500">❌ ${escapeHtml(files[i].name || 'foto')}: ${escapeHtml(error.message)}</span>`);
                 }
             }
-            status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b>.<br><br>` +
+            status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b> (pasta <b>Rótulos Extraídos</b> no seu Drive).<br><br>` +
                 results.join('<br>');
             busy = false;
         }
@@ -434,20 +434,60 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         }
 
         /* ---------- Foto do rótulo no Drive ---------- */
-        const FOLDER_TITLE = 'Rótulos - Scan IA';
+        const ROOT_FOLDER_TITLE = 'Rótulos Extraídos';
+        const IMAGES_FOLDER_TITLE = 'Imagens';
+        const FOLDER_MIME = 'application/vnd.google-apps.folder';
+        const folderCache = {};
 
-        async function ensureFolder(forceNew) {
-            let id = forceNew ? null : load('labels_folder_id');
-            if (id) return id;
-            const q = `name='${FOLDER_TITLE}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+        async function folderAlive(id) {
+            try {
+                const f = await api(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,trashed`);
+                return !f.trashed;
+            } catch (e) { if (e.code === 404) return false; throw e; }
+        }
+
+        async function findOrCreateFolder(name, parentId, storeKey) {
+            if (folderCache[storeKey]) return folderCache[storeKey];
+            const saved = load(storeKey);
+            if (saved && await folderAlive(saved)) { folderCache[storeKey] = saved; return saved; }
+
+            let q = `name='${name}' and mimeType='${FOLDER_MIME}' and trashed=false`;
+            if (parentId) q += ` and '${parentId}' in parents`;
             try {
                 const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
-                if (f.files && f.files.length) { id = f.files[0].id; store('labels_folder_id', id); return id; }
+                if (f.files && f.files.length) { store(storeKey, f.files[0].id); folderCache[storeKey] = f.files[0].id; return f.files[0].id; }
             } catch (e) { if (e.code === 401) throw e; console.warn('Busca da pasta falhou:', e); }
-            const c = await api('https://www.googleapis.com/drive/v3/files?fields=id', 'POST',
-                { name: FOLDER_TITLE, mimeType: 'application/vnd.google-apps.folder' });
-            store('labels_folder_id', c.id);
+
+            const body = { name, mimeType: FOLDER_MIME };
+            if (parentId) body.parents = [parentId];
+            const c = await api('https://www.googleapis.com/drive/v3/files?fields=id', 'POST', body);
+            store(storeKey, c.id); folderCache[storeKey] = c.id;
             return c.id;
+        }
+
+        function ensureRootFolder() { return findOrCreateFolder(ROOT_FOLDER_TITLE, null, 'root_folder_id'); }
+        async function ensureImagesFolder() {
+            const root = await ensureRootFolder();
+            return findOrCreateFolder(IMAGES_FOLDER_TITLE, root, 'images_folder_id');
+        }
+        function resetImagesFolder() { delete folderCache['images_folder_id']; store('images_folder_id', ''); }
+
+        // coloca a planilha dentro de "Rótulos Extraídos" (uma tentativa por sessão; não bloqueia o cadastro)
+        async function ensureSheetInFolder(info) {
+            if (info.triedMove) return;
+            info.triedMove = true;
+            try {
+                const root = await ensureRootFolder();
+                const f = await api(`https://www.googleapis.com/drive/v3/files/${info.id}?fields=parents`);
+                const parents = f.parents || [];
+                if (!parents.includes(root)) {
+                    const remove = parents.length ? `&removeParents=${encodeURIComponent(parents.join(','))}` : '';
+                    await api(`https://www.googleapis.com/drive/v3/files/${info.id}?addParents=${root}${remove}&fields=id,parents`, 'PATCH', {});
+                }
+            } catch (e) {
+                if (e.code === 401) throw e;
+                console.warn('Não foi possível guardar a planilha na pasta:', e);
+            }
         }
 
         function safeName(t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
@@ -471,10 +511,10 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 return json;
             };
 
-            let folderId = await ensureFolder(false);
+            let folderId = await ensureImagesFolder();
             try { return (await send(folderId)).webViewLink; }
             catch (e) {
-                if (e.code === 404) { folderId = await ensureFolder(true); return (await send(folderId)).webViewLink; }
+                if (e.code === 404) { resetImagesFolder(); folderId = await ensureImagesFolder(); return (await send(folderId)).webViewLink; }
                 throw e;
             }
         }
@@ -578,6 +618,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             updateSheetButton();
             await ensurePhotoHeader(info);
             await ensureFormatting(info);
+            await ensureSheetInFolder(info);
             const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
