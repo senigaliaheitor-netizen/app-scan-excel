@@ -3,117 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#FFD400">
     <title>Scan para Google Planilhas</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --ink: #1B2236; --ink-2: #3A4358; --muted: #5B6472; --line: #D9DDE5; --paper: #EEF0F4;
+            --yellow: #FFD400; --yellow-soft: #FFF6C7; --sheet: #0F7A4A;
+            --bad-bg: #FBD5D1; --bad-fg: #A61B12; --warn-bg: #FFE9A8; --warn-fg: #7A4E00;
+            --ok-bg: #CDEFD9; --ok-fg: #0F5F38;
+        }
+        html { -webkit-text-size-adjust: 100%; }
+        body { font-family: 'Figtree', system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+        h1, .display { font-family: 'Bricolage Grotesque', 'Figtree', sans-serif; letter-spacing: -0.02em; }
+
+        .card { background: #fff; border: 1.5px solid var(--ink); border-radius: 18px; box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
+        .head { background: var(--yellow); border-bottom: 3px solid var(--ink); }
+        .section-title { font-size: 13px; font-weight: 700; color: var(--ink); }
+        .hint { font-size: 12px; line-height: 1.5; color: var(--muted); }
+
+        .field { width: 100%; background: #fff; border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 14px; color: var(--ink); transition: border-color .15s, box-shadow .15s; }
+        .field::placeholder { color: #98A1B0; }
+        .field:hover { border-color: #B8BFCC; }
+        .field:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px var(--yellow); }
+
+        .btn { font-weight: 700; border-radius: 12px; cursor: pointer; transition: transform .12s, background-color .15s, box-shadow .15s, border-color .15s; user-select: none; }
+        .btn:active { transform: translateY(1px) scale(.99); }
+        .btn:focus-visible, .field:focus-visible, summary:focus-visible, a:focus-visible, label:focus-within { outline: 3px solid var(--yellow); outline-offset: 2px; }
+        .btn-ink { background: var(--ink); color: #fff; }
+        .btn-ink:hover { background: #2A3350; }
+        .btn-ink .ico { color: var(--yellow); }
+        .btn-line { background: #fff; color: var(--ink); border: 1.5px solid var(--ink); }
+        .btn-line:hover { background: var(--yellow-soft); }
+        .btn-sheet { background: var(--sheet); color: #fff; }
+        .btn-sheet:hover { background: #0B6A3F; }
+        .btn-soft { background: #E8EBF1; color: var(--ink); }
+        .btn-soft:hover { background: #DDE1EA; }
+        .btn-yellow { background: var(--yellow); color: var(--ink); border: 1.5px solid var(--ink); }
+        .btn-yellow:hover { background: #FFDD33; }
+        .btn[disabled] { opacity: .5; cursor: not-allowed; }
+        .ico { width: 20px; height: 20px; flex: none; }
+
+        #drop-zone { border: 2px dashed #B8BFCC; border-radius: 14px; background: #FAFBFC; transition: border-color .15s, background-color .15s; }
+        #drop-zone:hover, #drop-zone.drag { border-color: var(--ink); background: var(--yellow-soft); }
+
+        .chip { border-radius: 12px; padding: 10px 4px 9px; text-align: center; }
+        .chip .n { font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; line-height: 1; font-weight: 800; }
+        .chip .l { font-size: 11px; font-weight: 600; margin-top: 4px; line-height: 1.2; }
+        .chip-bad { background: var(--bad-bg); color: var(--bad-fg); }
+        .chip-warn { background: var(--warn-bg); color: var(--warn-fg); }
+        .chip-ok { background: var(--ok-bg); color: var(--ok-fg); }
+
+        #status:empty { display: none; }
+        #status { background: #F6F7F9; border: 1.5px solid var(--line); border-left: 5px solid var(--ink); border-radius: 12px; padding: 12px 14px; text-align: left; font-size: 13.5px; line-height: 1.6; color: var(--ink-2); }
+        #status b { color: var(--ink); }
+        #status .text-red-500 { color: var(--bad-fg); }
+        #status .text-amber-600 { color: var(--warn-fg); }
+        #auth-status .text-red-500 { color: var(--bad-fg); }
+
+        #review-panel { background: var(--yellow-soft); border: 1.5px solid var(--ink); border-radius: 14px; }
+        #review-panel.show { animation: pop .22s ease-out; }
+        @keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+        .rv-label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+        .rv-label .field { margin-top: 4px; border-color: #E6D77A; }
+
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] .chev { transform: rotate(90deg); }
+        .chev { transition: transform .15s; }
+
+        #user-info:empty { display: none; }
+        #user-info { display: inline-flex; align-items: center; gap: 6px; background: var(--ok-bg); color: var(--ok-fg); border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; }
+
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+        @media (max-width: 380px) { .card { box-shadow: 4px 4px 0 var(--ink); } }
+    </style>
 </head>
-<body class="bg-slate-100 min-h-screen p-4 flex flex-col items-center">
+<body class="min-h-screen px-4 py-8 flex flex-col items-center">
 
-    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center space-y-6 mt-6">
-        <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
-        <p class="text-sm text-slate-500 text-center">Tire uma foto ou envie imagens, prints e PDFs para extrair os dados do rótulo direto na sua conta do Google.</p>
-
-        <!-- Chave Gemini: digitada pelo usuário, guardada só neste navegador -->
-        <div class="w-full space-y-2">
-            <label for="gemini-key" class="text-xs font-semibold text-slate-600">Sua chave da API Gemini</label>
-            <div class="flex space-x-2">
-                <input id="gemini-key" type="password" autocomplete="off" placeholder="Cole sua chave aqui"
-                       class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                <button type="button" onclick="toggleKey()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg">👁</button>
-                <button type="button" onclick="saveKey()" class="px-3 py-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-semibold">Salvar</button>
+    <main class="card max-w-md w-full">
+        <header class="head px-6 pt-6 pb-5">
+            <div class="flex items-center gap-3">
+                <span class="flex-none w-11 h-11 rounded-xl bg-[#1B2236] text-[#FFD400] flex items-center justify-center" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
+                </span>
+                <h1 class="text-[26px] leading-[1.05] font-extrabold">Scan para<br>Google Planilhas</h1>
             </div>
-            <p id="key-status" class="text-xs text-slate-500">
-                A chave fica salva apenas neste navegador e nunca é enviada para o código do site.
-                Crie uma em <a class="text-blue-600 underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
-            </p>
-        </div>
+            <p class="text-[13.5px] leading-snug mt-3 text-[#1B2236]/80">Fotografe ou envie o rótulo. A IA lê os dados e cada produto vira uma linha na sua planilha.</p>
+        </header>
 
-        <details class="w-full text-xs text-slate-500">
-            <summary class="cursor-pointer">Opções avançadas: usar uma planilha específica</summary>
-            <div class="mt-2 space-y-2">
-                <div class="flex space-x-2">
-                    <input id="sheet-link" type="text" placeholder="Link ou ID da planilha"
-                           class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                    <button type="button" onclick="saveSheetLink()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Usar</button>
+        <div class="p-6 flex flex-col items-center space-y-6">
+
+            <!-- Chave Gemini: digitada pelo usuário, guardada só neste navegador -->
+            <section class="w-full space-y-2">
+                <label for="gemini-key" class="section-title">Chave da API Gemini</label>
+                <div class="flex gap-2">
+                    <input id="gemini-key" type="password" autocomplete="off" placeholder="Cole sua chave aqui" class="field flex-1 min-w-0">
+                    <button type="button" onclick="toggleKey()" aria-label="Mostrar ou ocultar a chave" class="btn btn-soft px-3 text-sm">👁</button>
+                    <button type="button" onclick="saveKey()" class="btn btn-ink px-4 text-sm">Salvar</button>
                 </div>
-                <p id="sheet-link-status"></p>
-                <div class="pt-2 space-y-1">
-                    <label for="model-name" class="font-semibold text-slate-600">Modelo da IA</label>
-                    <div class="flex space-x-2">
-                        <input id="model-name" type="text" placeholder="padrão: gemini-3.8-flash"
-                               class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
-                        <button type="button" onclick="saveModel()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Usar</button>
+                <p id="key-status" class="hint">
+                    Fica salva só neste navegador, nunca no código do site.
+                    Crie a sua em <a class="underline font-semibold text-[#1B2236]" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
+                </p>
+            </section>
+
+            <details class="w-full hint border border-[var(--line)] rounded-xl">
+                <summary class="px-3 py-2.5 flex items-center gap-2 font-semibold text-[#3A4358]">
+                    <svg class="chev w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M7 4l6 6-6 6V4z"/></svg>
+                    Opções avançadas
+                </summary>
+                <div class="px-3 pb-3 space-y-3">
+                    <div class="space-y-1">
+                        <label for="sheet-link" class="font-semibold text-[#3A4358]">Usar uma planilha específica</label>
+                        <div class="flex gap-2">
+                            <input id="sheet-link" type="text" placeholder="Link ou ID da planilha" class="field flex-1 min-w-0">
+                            <button type="button" onclick="saveSheetLink()" class="btn btn-soft px-4 text-sm">Usar</button>
+                        </div>
+                        <p id="sheet-link-status"></p>
                     </div>
-                    <p id="model-status">Cada modelo tem a sua própria cota gratuita. Deixe em branco para o padrão.</p>
+                    <div class="space-y-1">
+                        <label for="model-name" class="font-semibold text-[#3A4358]">Modelo da IA</label>
+                        <div class="flex gap-2">
+                            <input id="model-name" type="text" placeholder="padrão: gemini-3.8-flash" class="field flex-1 min-w-0">
+                            <button type="button" onclick="saveModel()" class="btn btn-soft px-4 text-sm">Usar</button>
+                        </div>
+                        <p id="model-status">Cada modelo tem a sua própria cota gratuita. Deixe em branco para o padrão.</p>
+                    </div>
                 </div>
-            </div>
-        </details>
+            </details>
 
-        <!-- Login -->
-        <div id="auth-section" class="w-full flex flex-col items-center space-y-3">
-            <button id="authorize_button" onclick="handleAuthClick()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-xl flex items-center justify-center space-x-2 w-full transition shadow cursor-pointer">
-                <span id="auth_button_text">Conectar com Google</span>
-            </button>
-            <p id="auth-status" class="text-xs text-slate-500 text-center"></p>
+            <!-- Login -->
+            <div id="auth-section" class="w-full flex flex-col items-center space-y-3">
+                <button id="authorize_button" onclick="handleAuthClick()" class="btn btn-ink w-full py-3.5 flex items-center justify-center gap-2.5 text-base">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+                    <span id="auth_button_text">Conectar com Google</span>
+                </button>
+                <p id="auth-status" class="hint text-center"></p>
+            </div>
+
+            <!-- Captura -->
+            <div id="capture-section" class="w-full flex flex-col items-stretch space-y-4 hidden">
+                <div class="flex justify-center"><p id="user-info"></p></div>
+
+                <a id="open-sheet" href="#" target="_blank" rel="noopener" class="hidden flex btn btn-sheet w-full py-3 items-center justify-center gap-2 text-[15px]">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/></svg>
+                    Abrir minha planilha
+                </a>
+
+                <div id="summary" class="hidden w-full rounded-2xl border-[1.5px] border-[var(--line)] p-3.5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <p class="section-title">Resumo da validade</p>
+                        <button type="button" onclick="loadSummary()" class="text-xs font-semibold text-[#1B2236] underline underline-offset-2 rounded px-1">Atualizar</button>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2">
+                        <div class="chip chip-bad"><div id="sum-expired" class="n">0</div><div class="l">Vencidos</div></div>
+                        <div class="chip chip-warn"><div id="sum-soon" class="n">0</div><div class="l">Vencem em 30 dias</div></div>
+                        <div class="chip chip-ok"><div id="sum-ok" class="n">0</div><div class="l">Em dia</div></div>
+                    </div>
+                    <p id="sum-extra" class="hint text-center"></p>
+                    <details id="sum-details" class="hidden text-xs text-[#3A4358]">
+                        <summary class="text-center font-semibold underline underline-offset-2">Ver quais</summary>
+                        <ul id="sum-list" class="mt-2 space-y-1.5 text-left"></ul>
+                    </details>
+                </div>
+
+                <label class="btn btn-ink w-full py-4 flex items-center justify-center gap-2.5 text-lg">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                    <span>Tirar foto</span>
+                    <input type="file" accept="image/*" capture="environment" id="camera-input" class="sr-only" onchange="processFiles(event)">
+                </label>
+
+                <label class="btn btn-line w-full py-3.5 flex items-center justify-center gap-2.5 text-base">
+                    <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>
+                    <span>Enviar da galeria</span>
+                    <input type="file" accept="image/*" multiple id="gallery-input" class="sr-only" onchange="processFiles(event)">
+                </label>
+
+                <label id="drop-zone" class="w-full py-5 px-4 text-center cursor-pointer block">
+                    <svg class="w-7 h-7 mx-auto text-[#1B2236]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"/></svg>
+                    <span class="block font-bold text-[#1B2236] text-base mt-1.5">Enviar arquivo</span>
+                    <span class="block hint mt-0.5">Clique, arraste prints, fotos ou PDF para cá, ou cole com Ctrl+V</span>
+                    <input type="file" id="file-input" accept="image/*,application/pdf" multiple class="sr-only" onchange="processFiles(event)">
+                </label>
+
+                <div id="preview-container" class="w-full hidden">
+                    <img id="image-preview" class="w-full rounded-xl border-[1.5px] border-[var(--ink)] max-h-64 object-cover" alt="Pré-visualização">
+                </div>
+
+                <div id="review-panel" class="hidden w-full p-4 space-y-3 text-left">
+                    <div>
+                        <p class="text-[15px] font-bold display">Confira os dados lidos</p>
+                        <p class="hint">Corrija o que estiver errado e salve. Nada vai para a planilha antes disso.</p>
+                    </div>
+                    <div id="review-fields" class="space-y-2.5"></div>
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" id="review-save" class="btn btn-ink flex-1 py-3 flex items-center justify-center gap-2">
+                            <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                            Salvar na planilha
+                        </button>
+                        <button type="button" id="review-cancel" class="btn btn-line px-4 py-3 text-sm">Descartar</button>
+                    </div>
+                </div>
+
+                <div id="status" role="status" aria-live="polite"></div>
+            </div>
         </div>
+    </main>
 
-        <!-- Captura -->
-        <div id="capture-section" class="w-full flex flex-col items-center space-y-4 hidden">
-            <p id="user-info" class="text-xs text-green-600 font-semibold"></p>
-            <a id="open-sheet" href="#" target="_blank" rel="noopener"
-               class="hidden w-full text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl transition shadow">📄 Abrir minha planilha</a>
-
-            <div id="summary" class="hidden w-full rounded-xl border border-slate-200 p-3 space-y-2">
-                <div class="flex items-center justify-between">
-                    <p class="text-xs font-bold text-slate-600">Resumo da validade</p>
-                    <button type="button" onclick="loadSummary()" class="text-xs text-blue-600 hover:underline">↻ Atualizar</button>
-                </div>
-                <div class="grid grid-cols-3 gap-2 text-center">
-                    <div class="rounded-lg bg-red-100 text-red-800 py-2"><div id="sum-expired" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">Vencidos</div></div>
-                    <div class="rounded-lg bg-amber-100 text-amber-800 py-2"><div id="sum-soon" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">Vencem em 30 dias</div></div>
-                    <div class="rounded-lg bg-emerald-100 text-emerald-800 py-2"><div id="sum-ok" class="text-xl font-bold">0</div><div class="text-[11px] font-semibold">OK</div></div>
-                </div>
-                <p id="sum-extra" class="text-[11px] text-slate-500 text-center"></p>
-                <details id="sum-details" class="hidden text-xs text-slate-600">
-                    <summary class="cursor-pointer text-center">Ver quais</summary>
-                    <ul id="sum-list" class="mt-2 space-y-1 text-left"></ul>
-                </details>
-            </div>
-
-            <label class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
-                <span>📸 Tirar Foto</span>
-                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden" onchange="processFiles(event)">
-            </label>
-
-            <label class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
-                <span>🖼️ Enviar da Galeria</span>
-                <input type="file" accept="image/*" multiple id="gallery-input" class="hidden" onchange="processFiles(event)">
-            </label>
-
-            <label id="drop-zone" class="w-full border-2 border-dashed border-slate-300 rounded-xl py-6 px-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition block">
-                <span class="block font-bold text-slate-700 text-lg">💻 Enviar arquivo</span>
-                <span class="block text-xs text-slate-500 mt-1">Clique, arraste prints/fotos/PDF para cá ou cole com Ctrl+V</span>
-                <input type="file" id="file-input" accept="image/*,application/pdf" multiple class="hidden" onchange="processFiles(event)">
-            </label>
-
-            <div id="preview-container" class="w-full hidden">
-                <img id="image-preview" class="w-full rounded-lg border border-slate-200 shadow-inner max-h-64 object-cover" alt="Pré-visualização">
-            </div>
-
-            <div id="review-panel" class="hidden w-full bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 text-left">
-                <p class="text-sm font-bold text-amber-900">Confira os dados lidos pela IA</p>
-                <p class="text-xs text-amber-800">Corrija o que estiver errado e clique em Salvar. Nada vai para a planilha antes disso.</p>
-                <div id="review-fields" class="space-y-2"></div>
-                <div class="flex space-x-2 pt-1">
-                    <button type="button" id="review-save" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg">✅ Salvar na planilha</button>
-                    <button type="button" id="review-cancel" class="px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-3 rounded-lg">Descartar</button>
-                </div>
-            </div>
-
-            <div id="status" class="text-sm font-medium text-slate-600 text-center leading-relaxed w-full"></div>
-        </div>
-    </div>
-
-    <p class="text-[10px] text-slate-400 mt-4">Versão 16 — pastas, fotos, status e resumo</p>
+    <p class="text-[11px] text-[#5B6472] mt-5">Versão 17 — visual harmonizado</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -182,7 +283,7 @@
                         accessToken = resp.access_token;
                         document.getElementById('auth-section').classList.add('hidden');
                         document.getElementById('capture-section').classList.remove('hidden');
-                        document.getElementById('user-info').innerText = '✅ Conta do Google Conectada!';
+                        document.getElementById('user-info').innerText = '● Conta do Google conectada';
                         updateSheetButton();
                         loadSummary();
                     } else if (resp && resp.error) {
@@ -360,12 +461,12 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 const panel = document.getElementById('review-panel');
                 const box = document.getElementById('review-fields');
                 box.innerHTML = REVIEW_FIELDS.map(([k, name]) => `
-                    <label class="block text-xs font-semibold text-slate-600">${name}
+                    <label class="rv-label">${name}
                         <input data-k="${k}" type="text" value="${escapeHtml(data[k] ?? 'N/A')}"
-                               class="mt-1 w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-normal text-slate-800 bg-white">
+                               class="field">
                     </label>`).join('');
                 document.getElementById('status').innerHTML = `✏️ Aguardando sua conferência...${label}`;
-                panel.classList.remove('hidden');
+                panel.classList.remove('hidden'); panel.classList.remove('show'); void panel.offsetWidth; panel.classList.add('show');
                 panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
                 const done = (result) => {
@@ -487,28 +588,6 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
             await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:I1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
 
-            try {
-                const black = { red: 0, green: 0, blue: 0 };
-                const solid = { style: 'SOLID', color: black };
-                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170];
-                await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
-                    requests: [
-                        { repeatCell: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 9 },
-                            cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
-                            fields: 'userEnteredFormat(backgroundColor,textFormat)'
-                        } },
-                        { updateBorders: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 9 },
-                            top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
-                        } },
-                        ...widths.map((px, i) => ({ updateDimensionProperties: {
-                            range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
-                            properties: { pixelSize: px }, fields: 'pixelSize'
-                        } }))
-                    ]
-                });
-            } catch (e) { console.warn('Formatação não aplicada:', e); }
 
             return sheetInfo;
         }
@@ -640,25 +719,58 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         }
 
         /* ---------- Formatação: só a 1ª linha amarela, resto branco, bordas em tudo ---------- */
-        const BLACK_SOLID = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
+        const hex = (h) => ({ red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 });
+        const BORDER = { style: 'SOLID', color: hex('#2B3445') };
         const WHITE = { red: 1, green: 1, blue: 1 };
-        const YELLOW = { red: 1, green: 1, blue: 0 };
+        const YELLOW = hex('#FFD400');      // cabeçalho
+        const INK = hex('#1B2236');         // texto do cabeçalho (o mesmo azul-tinta do app)
         const NCOLS = 9;
+        const COL_WIDTHS = [250, 125, 110, 170, 230, 150, 140, 110, 150];
+        const COL_ALIGN = ['LEFT', 'CENTER', 'CENTER', 'LEFT', 'LEFT', 'CENTER', 'CENTER', 'CENTER', 'CENTER'];
+        const STATUS_COLORS = {
+            'Vencido':          { bg: '#FBD5D1', fg: '#A61B12' },
+            'Vence em 30 dias': { bg: '#FFE9A8', fg: '#7A4E00' },
+            'OK':               { bg: '#CDEFD9', fg: '#0F5F38' },
+            'Sem data':         { bg: '#E3E6EC', fg: '#4B5565' }
+        };
 
         function rowRange(sheetId, from, to) {
             return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
         }
+        // linhas de dados: fundo branco, fonte única, alinhamento por coluna, bordas
+        function bodyRequests(sheetId, from, to) {
+            const reqs = [
+                { repeatCell: { range: rowRange(sheetId, from, to),
+                    cell: { userEnteredFormat: { backgroundColor: WHITE, verticalAlignment: 'MIDDLE', wrapStrategy: 'CLIP',
+                        textFormat: { bold: false, fontFamily: 'Roboto', fontSize: 10 } } },
+                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.fontSize' } },
+                { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: from, endIndex: to },
+                    properties: { pixelSize: 30 }, fields: 'pixelSize' } },
+                { updateBorders: { range: rowRange(sheetId, from, to),
+                    top: BORDER, bottom: BORDER, left: BORDER, right: BORDER, innerHorizontal: BORDER, innerVertical: BORDER } }
+            ];
+            COL_ALIGN.forEach((al, c) => reqs.push({ repeatCell: {
+                range: { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: c, endColumnIndex: c + 1 },
+                cell: { userEnteredFormat: { horizontalAlignment: al } }, fields: 'userEnteredFormat.horizontalAlignment' } }));
+            return reqs;
+        }
         function formatRequests(sheetId, endRow) {
             return [
                 { repeatCell: { range: rowRange(sheetId, 0, 1),
-                    cell: { userEnteredFormat: { backgroundColor: YELLOW, textFormat: { bold: true } } },
-                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
-                { repeatCell: { range: rowRange(sheetId, 1, endRow),
-                    cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
-                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
-                { updateBorders: { range: rowRange(sheetId, 0, endRow),
-                    top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
-                    innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
+                    cell: { userEnteredFormat: { backgroundColor: YELLOW, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP',
+                        textFormat: { bold: true, fontFamily: 'Roboto', fontSize: 10, foregroundColor: INK } } },
+                    fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.foregroundColor' } },
+                { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
+                    properties: { pixelSize: 40 }, fields: 'pixelSize' } },
+                ...bodyRequests(sheetId, 1, endRow),
+                { updateBorders: { range: rowRange(sheetId, 0, 1),
+                    top: BORDER, bottom: { style: 'SOLID_MEDIUM', color: BORDER.color }, left: BORDER, right: BORDER, innerVertical: BORDER } },
+                ...COL_WIDTHS.map((px, i) => ({ updateDimensionProperties: {
+                    range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+                    properties: { pixelSize: px }, fields: 'pixelSize' } })),
+                { updateSheetProperties: { properties: { sheetId, tabColor: YELLOW,
+                    gridProperties: { frozenRowCount: 1, hideGridlines: true } },
+                    fields: 'tabColor,gridProperties.frozenRowCount,gridProperties.hideGridlines' } }
             ];
         }
 
@@ -762,14 +874,8 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 if (!m) return;
                 const row = parseInt(m[1], 10);
                 if (row < 2) return;
-                await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
-                    { repeatCell: { range: rowRange(info.sheetId, row - 1, row),
-                        cell: { userEnteredFormat: { backgroundColor: WHITE, textFormat: { bold: false } } },
-                        fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.textFormat.bold' } },
-                    { updateBorders: { range: rowRange(info.sheetId, row - 1, row),
-                        top: BLACK_SOLID, bottom: BLACK_SOLID, left: BLACK_SOLID, right: BLACK_SOLID,
-                        innerHorizontal: BLACK_SOLID, innerVertical: BLACK_SOLID } }
-                ] });
+                await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
+                    { requests: bodyRequests(info.sheetId, row - 1, row) });
             } catch (e) { console.warn('Formatação da nova linha não aplicada:', e); }
             try {
                 const m2 = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
@@ -831,20 +937,22 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!I1')}?valueInputOption=RAW`, 'PUT', { values: [[HEADERS[8]]] });
                 }
                 // cores (uma vez por planilha)
-                const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)))))`);
+                const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)),format(backgroundColor))))`);
                 const mine = (meta.sheets || []).find(sh => sh.properties.sheetId === info.sheetId) || {};
-                const hasRules = (mine.conditionalFormats || []).some(cf =>
-                    ((cf.booleanRule && cf.booleanRule.condition && cf.booleanRule.condition.values) || []).some(v => v.userEnteredValue === 'Vencido'));
-                if (!hasRules) {
+                const rules = mine.conditionalFormats || [];
+                const isStatus = (cf) => ((cf.booleanRule && cf.booleanRule.condition && cf.booleanRule.condition.values) || [])
+                    .some(v => STATUS_COLORS[v.userEnteredValue]);
+                const upToDate = rules.some(cf => isStatus(cf) && cf.booleanRule.condition.values[0].userEnteredValue === 'Vencido'
+                    && Math.abs(((cf.booleanRule.format.backgroundColor || {}).green || 0) - hex(STATUS_COLORS['Vencido'].bg).green) < 0.01);
+                if (!upToDate) {
+                    const del = [];
+                    for (let i = rules.length - 1; i >= 0; i--) if (isStatus(rules[i])) del.push({ deleteConditionalFormatRule: { sheetId: info.sheetId, index: i } });
                     const range = [{ sheetId: info.sheetId, startRowIndex: 1, endRowIndex: 5000, startColumnIndex: 8, endColumnIndex: 9 }];
-                    const rule = (text, bg, fg) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: range, booleanRule: {
+                    const rule = (text) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: range, booleanRule: {
                         condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: text }] },
-                        format: { backgroundColor: bg, textFormat: { foregroundColor: fg, bold: true } } } } } });
+                        format: { backgroundColor: hex(STATUS_COLORS[text].bg), textFormat: { foregroundColor: hex(STATUS_COLORS[text].fg), bold: true } } } } } });
                     await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
-                        rule('Sem data', { red: 0.9, green: 0.9, blue: 0.9 }, { red: 0.35, green: 0.35, blue: 0.35 }),
-                        rule('OK', { red: 0.72, green: 0.88, blue: 0.8 }, { red: 0, green: 0.4, blue: 0.2 }),
-                        rule('Vence em 30 dias', { red: 1, green: 0.9, blue: 0.6 }, { red: 0.55, green: 0.35, blue: 0 }),
-                        rule('Vencido', { red: 0.96, green: 0.78, blue: 0.76 }, { red: 0.61, green: 0, blue: 0 })
+                        ...del, rule('Sem data'), rule('OK'), rule('Vence em 30 dias'), rule('Vencido')
                     ] });
                 }
                 // linhas antigas sem status
@@ -901,7 +1009,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 alerts.sort((a, b) => a.v - b.v);
                 const det = document.getElementById('sum-details');
                 document.getElementById('sum-list').innerHTML = alerts.slice(0, 15).map(a =>
-                    `<li class="${a.tipo === 'v' ? 'text-red-700' : 'text-amber-700'}">${a.tipo === 'v' ? '🔴' : '🟡'} <b>${escapeHtml(a.nome)}</b> — ${serialToBR(a.v)}</li>`).join('')
+                    `<li class="${a.tipo === 'v' ? 'text-[#A61B12]' : 'text-[#7A4E00]'}">${a.tipo === 'v' ? '🔴' : '🟡'} <b>${escapeHtml(a.nome)}</b> — ${serialToBR(a.v)}</li>`).join('')
                     + (alerts.length > 15 ? `<li class="text-slate-500">… e mais ${alerts.length - 15}</li>` : '');
                 det.classList.toggle('hidden', alerts.length === 0);
                 box.classList.remove('hidden');
@@ -978,7 +1086,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         /* ---------- Arrastar, soltar e colar (desktop) ---------- */
         (function () {
             const dz = document.getElementById('drop-zone');
-            const on = ['border-indigo-500', 'bg-indigo-50'];
+            const on = ['drag'];
             ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
                 e.preventDefault(); dz.classList.add(...on);
             }));
