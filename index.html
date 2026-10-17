@@ -87,7 +87,7 @@
         </div>
     </div>
 
-    <p class="text-[10px] text-slate-400 mt-4">Versão 7 — pastas e fotos no Drive</p>
+    <p class="text-[10px] text-slate-400 mt-4">Versão 8 — pastas, fotos e status de validade</p>
 
     <script>
         const CLIENT_ID = '558756318293-303rltbv0jo3r61t9t9btri571gsiuv8.apps.googleusercontent.com';
@@ -314,7 +314,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
         /* ---------- Google Planilhas: sempre a MESMA planilha ---------- */
         const SHEET_TITLE = 'Dados Extraídos - IA';
-        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo"];
+        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade"];
         let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
 
         async function api(url, method = 'GET', body) {
@@ -414,21 +414,21 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             store('user_spreadsheet_id', id);
             sheetInfo = { id, locale: 'pt_BR', tab: 'Dados', sheetId, headerOk: true };
 
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:H1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:I1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
 
             try {
                 const black = { red: 0, green: 0, blue: 0 };
                 const solid = { style: 'SOLID', color: black };
-                const widths = [260, 140, 140, 150, 110, 200, 170, 230];
+                const widths = [260, 140, 140, 150, 110, 200, 170, 230, 170];
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
                     requests: [
                         { repeatCell: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 8 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 9 },
                             cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
                             fields: 'userEnteredFormat(backgroundColor,textFormat)'
                         } },
                         { updateBorders: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 8 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 9 },
                             top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
                         } },
                         ...widths.map((px, i) => ({ updateDimensionProperties: {
@@ -572,7 +572,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
         const BLACK_SOLID = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
         const WHITE = { red: 1, green: 1, blue: 1 };
         const YELLOW = { red: 1, green: 1, blue: 0 };
-        const NCOLS = 8;
+        const NCOLS = 9;
 
         function rowRange(sheetId, from, to) {
             return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
@@ -650,6 +650,85 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             } catch (e) { console.warn('Link da foto não aplicado:', e); }
         }
 
+        /* ---------- Status de validade (coluna I, colorida) ---------- */
+        function normalizeDate(v) {
+            const t = String(v || '').trim();
+            let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+            if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) return `${pad2(m[1])}/${pad2(m[2])}/${m[3]}`;
+            m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+            if (m && +m[2] >= 1 && +m[2] <= 12) return `${pad2(m[3])}/${pad2(m[2])}/${m[1]}`;
+            m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/); // mês/ano -> último dia do mês
+            if (m && +m[1] >= 1 && +m[1] <= 12) return `${pad2(new Date(+m[2], +m[1], 0).getDate())}/${pad2(m[1])}/${m[2]}`;
+            return t;
+        }
+
+        function statusFormula(row, sep) {
+            return `=IF(ISNUMBER(B${row})${sep}IF(B${row}<TODAY()${sep}"Vencido"${sep}IF(B${row}<=TODAY()+30${sep}"Vence em 30 dias"${sep}"OK"))${sep}"Sem data")`;
+        }
+
+        // grava a fórmula; descobre sozinho se o Google quer ";" ou "," e lembra
+        async function writeStatusFormulas(info, rows) {
+            if (!rows.length) return true;
+            const tab = `'${info.tab.replace(/'/g, "''")}'`;
+            const guess = (info.locale || '').toLowerCase().startsWith('pt') ? ';' : ',';
+            const order = [info.sep, guess, guess === ';' ? ',' : ';'].filter((v, i, a) => v && a.indexOf(v) === i);
+            for (const sep of order) {
+                try {
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values:batchUpdate`, 'POST', {
+                        valueInputOption: 'USER_ENTERED',
+                        data: rows.map(r => ({ range: `${tab}!I${r}`, values: [[statusFormula(r, sep)]] }))
+                    });
+                    if (info.sep) return true;
+                    const chk = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!I' + rows[0])}`);
+                    const val = chk.values && chk.values[0] && chk.values[0][0];
+                    if (val && !String(val).startsWith('#') && !String(val).startsWith('=')) { info.sep = sep; return true; }
+                } catch (e) { if (e.code === 401) throw e; console.warn('Fórmula de status com', sep, 'falhou:', e); }
+            }
+            return false;
+        }
+
+        async function ensureStatusColumn(info) {
+            if (info.statusOk) return;
+            info.statusOk = true;
+            try {
+                const tab = `'${info.tab.replace(/'/g, "''")}'`;
+                // cabeçalho
+                const h = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!I1')}`);
+                if (!(h.values && h.values[0] && h.values[0][0])) {
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!I1')}?valueInputOption=RAW`, 'PUT', { values: [[HEADERS[8]]] });
+                }
+                // cores (uma vez por planilha)
+                const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)))))`);
+                const mine = (meta.sheets || []).find(sh => sh.properties.sheetId === info.sheetId) || {};
+                const hasRules = (mine.conditionalFormats || []).some(cf =>
+                    ((cf.booleanRule && cf.booleanRule.condition && cf.booleanRule.condition.values) || []).some(v => v.userEnteredValue === 'Vencido'));
+                if (!hasRules) {
+                    const range = [{ sheetId: info.sheetId, startRowIndex: 1, endRowIndex: 5000, startColumnIndex: 8, endColumnIndex: 9 }];
+                    const rule = (text, bg, fg) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: range, booleanRule: {
+                        condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: text }] },
+                        format: { backgroundColor: bg, textFormat: { foregroundColor: fg, bold: true } } } } } });
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
+                        rule('Sem data', { red: 0.9, green: 0.9, blue: 0.9 }, { red: 0.35, green: 0.35, blue: 0.35 }),
+                        rule('OK', { red: 0.72, green: 0.88, blue: 0.8 }, { red: 0, green: 0.4, blue: 0.2 }),
+                        rule('Vence em 30 dias', { red: 1, green: 0.9, blue: 0.6 }, { red: 0.55, green: 0.35, blue: 0 }),
+                        rule('Vencido', { red: 0.96, green: 0.78, blue: 0.76 }, { red: 0.61, green: 0, blue: 0 })
+                    ] });
+                }
+                // linhas antigas sem status
+                const all = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!A2:I1000')}`);
+                const missing = [];
+                (all.values || []).forEach((r, i) => { if (r && r[0] && !r[8]) missing.push(i + 2); });
+                await writeStatusFormulas(info, missing);
+            } catch (e) { if (e.code === 401) throw e; console.warn('Coluna de status não configurada:', e); }
+        }
+
+        async function addStatusForNewRow(info, appendResp) {
+            try {
+                const m = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
+                if (m && parseInt(m[1], 10) >= 2) await writeStatusFormulas(info, [parseInt(m[1], 10)]);
+            } catch (e) { if (e.code === 401) throw e; console.warn('Status da nova linha não gravado:', e); }
+        }
+
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
         function updateSheetButton() {
@@ -676,6 +755,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             await ensurePhotoHeader(info);
             await ensureFormatting(info);
             await ensureSheetInFolder(info);
+            await ensureStatusColumn(info);
             const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
@@ -698,7 +778,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 'POST',
                 { values: [[
                     data.nome || "N/A",
-                    data.validade || "N/A",
+                    ((info.locale || '').toLowerCase().startsWith('pt') ? normalizeDate(data.validade) : data.validade) || "N/A",
                     asText(data.lote || "N/A"),
                     data.fabricante || "N/A",
                     data.obs || "N/A",
@@ -708,6 +788,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                 ]] }
             );
             await formatNewRow(info, appended, photoLink);
+            await addStatusForNewRow(info, appended);
             return 'added';
         }
 
