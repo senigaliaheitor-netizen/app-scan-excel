@@ -198,7 +198,7 @@
                         ? `⏭️ <b>${escapeHtml(data.nome)}</b> descartado — não foi salvo.`
                         : data._dup
                         ? `⚠️ <b>${escapeHtml(data.nome)}</b> (lote ${escapeHtml(data.lote)}) já estava cadastrado — não foi repetido.`
-                        : `✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}`);
+                        : `✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}` + (data._photoError ? `<br><span class="text-amber-600">⚠️ Dados salvos, mas a foto não foi para o Drive (${escapeHtml(data._photoError)}).</span>` : ''));
                 } catch (error) {
                     console.error(error);
                     results.push(`<span class="text-red-500">❌ ${escapeHtml(files[i].name || 'foto')}: ${escapeHtml(error.message)}</span>`);
@@ -268,7 +268,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             Object.assign(data, reviewed);
 
             status.innerHTML = `⏳ Salvando na planilha Google...${label}`;
-            const outcome = await saveToUserGoogleSheet(data);
+            const outcome = await saveToUserGoogleSheet(data, file);
             data._dup = (outcome === 'duplicate');
             return data;
         }
@@ -309,7 +309,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
         /* ---------- Google Planilhas: sempre a MESMA planilha ---------- */
         const SHEET_TITLE = 'Dados Extraídos - IA';
-        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro"];
+        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo"];
         let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
 
         async function api(url, method = 'GET', body) {
@@ -333,7 +333,7 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
 
         async function getSpreadsheetInfo(id) {
             const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=properties(title,locale),sheets(properties(sheetId,title))`);
-            return { id, locale: (j.properties && j.properties.locale) || '', tab: j.sheets[0].properties.title };
+            return { id, locale: (j.properties && j.properties.locale) || '', tab: j.sheets[0].properties.title, sheetId: j.sheets[0].properties.sheetId };
         }
 
         function saveSheetLink() {
@@ -387,23 +387,23 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             const id = created.spreadsheetId;
             const sheetId = created.sheets[0].properties.sheetId;
             store('user_spreadsheet_id', id);
-            sheetInfo = { id, locale: 'pt_BR', tab: 'Dados' };
+            sheetInfo = { id, locale: 'pt_BR', tab: 'Dados', sheetId, headerOk: true };
 
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:G1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:H1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
 
             try {
                 const black = { red: 0, green: 0, blue: 0 };
                 const solid = { style: 'SOLID', color: black };
-                const widths = [260, 140, 140, 150, 110, 200, 170];
+                const widths = [260, 140, 140, 150, 110, 200, 170, 230];
                 await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
                     requests: [
                         { repeatCell: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 8 },
                             cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
                             fields: 'userEnteredFormat(backgroundColor,textFormat)'
                         } },
                         { updateBorders: {
-                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 7 },
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 8 },
                             top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
                         } },
                         ...widths.map((px, i) => ({ updateDimensionProperties: {
@@ -433,6 +433,75 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             return /^\d+$/.test(s) ? `'${s}` : s;
         }
 
+        /* ---------- Foto do rótulo no Drive ---------- */
+        const FOLDER_TITLE = 'Rótulos - Scan IA';
+
+        async function ensureFolder(forceNew) {
+            let id = forceNew ? null : load('labels_folder_id');
+            if (id) return id;
+            const q = `name='${FOLDER_TITLE}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+            try {
+                const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
+                if (f.files && f.files.length) { id = f.files[0].id; store('labels_folder_id', id); return id; }
+            } catch (e) { if (e.code === 401) throw e; console.warn('Busca da pasta falhou:', e); }
+            const c = await api('https://www.googleapis.com/drive/v3/files?fields=id', 'POST',
+                { name: FOLDER_TITLE, mimeType: 'application/vnd.google-apps.folder' });
+            store('labels_folder_id', c.id);
+            return c.id;
+        }
+
+        function safeName(t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
+
+        async function uploadLabelPhoto(file, data) {
+            const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop().toLowerCase()
+                : ((file.type || '').split('/')[1] || 'jpg');
+            const d = new Date();
+            const stamp = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+            const name = `${safeName(data.nome) || 'rotulo'}_${safeName(data.lote) || 'sem-lote'}_${stamp}.${ext}`;
+
+            const send = async (folderId) => {
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify({ name, parents: [folderId] })], { type: 'application/json' }));
+                form.append('file', file);
+                const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
+                    method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}` }, body: form
+                });
+                const json = await res.json().catch(() => ({}));
+                if (json.error) { const e = new Error(json.error.message); e.code = json.error.code; throw e; }
+                return json;
+            };
+
+            let folderId = await ensureFolder(false);
+            try { return (await send(folderId)).webViewLink; }
+            catch (e) {
+                if (e.code === 404) { folderId = await ensureFolder(true); return (await send(folderId)).webViewLink; }
+                throw e;
+            }
+        }
+
+        // planilhas criadas antes desta versão não têm a coluna H
+        async function ensurePhotoHeader(info) {
+            if (info.headerOk) return;
+            const tab = `'${info.tab.replace(/'/g, "''")}'`;
+            const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!H1')}`);
+            const has = j.values && j.values[0] && j.values[0][0];
+            if (!has) {
+                await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!H1')}?valueInputOption=RAW`, 'PUT', { values: [[HEADERS[7]]] });
+                try {
+                    const solid = { style: 'SOLID', color: { red: 0, green: 0, blue: 0 } };
+                    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
+                        { repeatCell: { range: { sheetId: info.sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 7, endColumnIndex: 8 },
+                            cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
+                            fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+                        { updateBorders: { range: { sheetId: info.sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 7, endColumnIndex: 8 },
+                            top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid } },
+                        { updateDimensionProperties: { range: { sheetId: info.sheetId, dimension: 'COLUMNS', startIndex: 7, endIndex: 8 }, properties: { pixelSize: 230 }, fields: 'pixelSize' } }
+                    ] });
+                } catch (e) { console.warn('Formatação da coluna H não aplicada:', e); }
+            }
+            info.headerOk = true;
+        }
+
         function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
 
         function updateSheetButton() {
@@ -453,12 +522,24 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             return rows.some(r => norm(r[0]) === norm(data.nome) && norm(r[2]) === lote && norm(r[5]) === cod);
         }
 
-        async function saveToUserGoogleSheet(data) {
+        async function saveToUserGoogleSheet(data, file) {
             const info = await ensureSpreadsheet();
             updateSheetButton();
-            const range = `'${info.tab.replace(/'/g, "''")}'!A:G`;
+            await ensurePhotoHeader(info);
+            const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
 
             if (await isDuplicate(info, range, data)) return 'duplicate';
+
+            let photoLink = 'N/A';
+            if (file) {
+                try {
+                    document.getElementById('status').innerHTML = '⏳ Guardando a foto no Drive...';
+                    photoLink = await uploadLabelPhoto(file, data);
+                } catch (e) {
+                    console.warn('Foto não enviada ao Drive:', e);
+                    data._photoError = e.message;
+                }
+            }
 
             await api(
                 `https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
@@ -470,7 +551,8 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
                     data.fabricante || "N/A",
                     data.obs || "N/A",
                     asText(data.codigo || "N/A"),
-                    nowForSheet(info.locale)
+                    nowForSheet(info.locale),
+                    photoLink
                 ]] }
             );
             return 'added';
