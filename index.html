@@ -10,7 +10,7 @@
 
     <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-6 flex flex-col items-center space-y-6 mt-6">
         <h1 class="text-2xl font-bold text-slate-800 text-center">Scan para Google Planilhas</h1>
-        <p class="text-sm text-slate-500 text-center">Tire uma foto ou envie imagens da galeria para extrair os dados do rótulo direto na sua conta do Google.</p>
+        <p class="text-sm text-slate-500 text-center">Tire uma foto ou envie imagens, prints e PDFs para extrair os dados do rótulo direto na sua conta do Google.</p>
 
         <!-- Chave Gemini: digitada pelo usuário, guardada só neste navegador -->
         <div class="w-full space-y-2">
@@ -26,6 +26,18 @@
                 Crie uma em <a class="text-blue-600 underline" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.
             </p>
         </div>
+
+        <details class="w-full text-xs text-slate-500">
+            <summary class="cursor-pointer">Opções avançadas: usar uma planilha específica</summary>
+            <div class="mt-2 space-y-2">
+                <div class="flex space-x-2">
+                    <input id="sheet-link" type="text" placeholder="Link ou ID da planilha"
+                           class="flex-1 min-w-0 border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                    <button type="button" onclick="saveSheetLink()" class="px-3 py-2 text-xs bg-slate-200 hover:bg-slate-300 rounded-lg font-semibold">Usar</button>
+                </div>
+                <p id="sheet-link-status"></p>
+            </div>
+        </details>
 
         <!-- Login -->
         <div id="auth-section" class="w-full flex flex-col items-center space-y-3">
@@ -47,6 +59,12 @@
             <label class="w-full bg-violet-600 hover:bg-violet-700 text-white font-bold py-4 rounded-xl flex items-center justify-center cursor-pointer transition shadow text-lg">
                 <span>🖼️ Enviar da Galeria</span>
                 <input type="file" accept="image/*" multiple id="gallery-input" class="hidden" onchange="processFiles(event)">
+            </label>
+
+            <label id="drop-zone" class="w-full border-2 border-dashed border-slate-300 rounded-xl py-6 px-4 text-center cursor-pointer hover:border-indigo-400 hover:bg-indigo-50 transition block">
+                <span class="block font-bold text-slate-700 text-lg">💻 Enviar arquivo</span>
+                <span class="block text-xs text-slate-500 mt-1">Clique, arraste prints/fotos/PDF para cá ou cole com Ctrl+V</span>
+                <input type="file" id="file-input" accept="image/*,application/pdf" multiple class="hidden" onchange="processFiles(event)">
             </label>
 
             <div id="preview-container" class="w-full hidden">
@@ -136,10 +154,19 @@
         }
 
         /* ---------- Processamento (câmera ou galeria, 1 ou várias fotos) ---------- */
-        async function processFiles(event) {
+        function processFiles(event) {
             const files = Array.from(event.target.files || []);
             event.target.value = '';
+            handleFiles(files);
+        }
+
+        async function handleFiles(files) {
+            files = files.filter(f => (f.type || '').startsWith('image/') || f.type === 'application/pdf');
             if (!files.length || busy) return;
+            if (!accessToken) {
+                document.getElementById('auth-status').innerHTML = '<span class="text-red-500">Conecte com o Google antes de enviar arquivos.</span>';
+                return;
+            }
 
             const status = document.getElementById('status');
             const key = getKey();
@@ -160,15 +187,19 @@
                     results.push(`<span class="text-red-500">❌ ${escapeHtml(files[i].name || 'foto')}: ${escapeHtml(error.message)}</span>`);
                 }
             }
-            status.innerHTML = `🎉 <b>Concluído!</b> Dados enviados para a planilha <b>'Dados Extraídos - IA'</b> no seu Google Drive.<br><br>` +
+            status.innerHTML = `🎉 <b>Concluído!</b> Dados adicionados em sequência na planilha <b>'Dados Extraídos - IA'</b>.<br><br>` +
                 results.join('<br>');
             busy = false;
         }
 
         async function processOne(file, key, label) {
             const status = document.getElementById('status');
-            document.getElementById('image-preview').src = URL.createObjectURL(file);
-            document.getElementById('preview-container').classList.remove('hidden');
+            if ((file.type || '').startsWith('image/')) {
+                document.getElementById('image-preview').src = URL.createObjectURL(file);
+                document.getElementById('preview-container').classList.remove('hidden');
+            } else {
+                document.getElementById('preview-container').classList.add('hidden');
+            }
             status.innerHTML = `⏳ Analisando imagem com IA...${label}`;
 
             const base64Image = await convertBase64(file);
@@ -220,48 +251,166 @@ Se algum campo não for identificado na imagem, preencha o valor com "N/A".`;
             return data;
         }
 
-        /* ---------- Google Planilhas ---------- */
-        async function sheetsFetch(url, body) {
+        /* ---------- Google Planilhas: sempre a MESMA planilha ---------- */
+        const SHEET_TITLE = 'Dados Extraídos - IA';
+        const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro"];
+        let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
+
+        async function api(url, method = 'GET', body) {
             const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                method,
+                headers: Object.assign({ 'Authorization': `Bearer ${accessToken}` },
+                    body ? { 'Content-Type': 'application/json' } : {}),
+                body: body ? JSON.stringify(body) : undefined
             });
-            const json = await res.json();
+            const json = await res.json().catch(() => ({}));
             if (json.error) {
-                if (json.error.code === 401) {
-                    throw new Error('Sessão do Google expirou. Recarregue a página e conecte de novo.');
-                }
-                throw new Error(`Sheets: ${json.error.message}`);
+                const msg = json.error.code === 401
+                    ? 'Sessão do Google expirou. Recarregue a página e conecte de novo.'
+                    : `Google: ${json.error.message}`;
+                const err = new Error(msg);
+                err.code = json.error.code;
+                throw err;
             }
             return json;
         }
 
-        async function saveToUserGoogleSheet(data) {
-            let spreadsheetId = load('user_spreadsheet_id');
-            const appendUrl = (id) =>
-                `https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:F1:append?valueInputOption=USER_ENTERED`;
+        async function getSpreadsheetInfo(id) {
+            const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=properties(title,locale),sheets(properties(sheetId,title))`);
+            return { id, locale: (j.properties && j.properties.locale) || '', tab: j.sheets[0].properties.title };
+        }
 
-            if (!spreadsheetId) {
-                const created = await sheetsFetch('https://sheets.googleapis.com/v4/spreadsheets', {
-                    properties: { title: 'Dados Extraídos - IA' },
-                    sheets: [{ properties: { title: 'Dados' } }]
-                });
-                spreadsheetId = created.spreadsheetId;
-                store('user_spreadsheet_id', spreadsheetId);
+        function saveSheetLink() {
+            const el = document.getElementById('sheet-link');
+            const st = document.getElementById('sheet-link-status');
+            const m = el.value.match(/\/d\/([a-zA-Z0-9_-]+)/) || el.value.trim().match(/^([a-zA-Z0-9_-]{20,})$/);
+            if (!m) { st.innerHTML = '<span class="text-red-500">Link ou ID inválido.</span>'; return; }
+            store('user_spreadsheet_id', m[1]);
+            sheetInfo = null;
+            st.innerHTML = '<span class="text-green-600">✅ Planilha definida. Os próximos cadastros irão para ela.</span>';
+        }
 
-                await sheetsFetch(appendUrl(spreadsheetId), {
-                    values: [["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "OBS", "Código do Produto"]]
-                });
+        async function ensureSpreadsheet() {
+            if (sheetInfo) return sheetInfo;
+
+            // 1) planilha já usada neste navegador
+            const savedId = load('user_spreadsheet_id');
+            if (savedId) {
+                try {
+                    sheetInfo = await getSpreadsheetInfo(savedId);
+                    return sheetInfo;
+                } catch (e) {
+                    // só segue adiante se a planilha realmente não existe/não está acessível
+                    if (e.code !== 404 && e.code !== 403) throw e;
+                    store('user_spreadsheet_id', '');
+                }
             }
 
-            await sheetsFetch(appendUrl(spreadsheetId), {
-                values: [[
-                    data.nome || "N/A", data.validade || "N/A", data.lote || "N/A",
-                    data.fabricante || "N/A", data.obs || "N/A", data.codigo || "N/A"
-                ]]
+            // 2) procura no Drive uma planilha já criada pelo app (a mais antiga)
+            const q = `name='${SHEET_TITLE}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false`;
+            let found;
+            try {
+                found = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=10&fields=files(id,name)`);
+            } catch (e) {
+                throw new Error(`Não consegui procurar a planilha existente (${e.message}). Para não criar outra, nada foi salvo. Ative a "Google Drive API" no projeto ou informe o link da planilha em "Opções avançadas".`);
+            }
+            if (found.files && found.files.length) {
+                store('user_spreadsheet_id', found.files[0].id);
+                sheetInfo = await getSpreadsheetInfo(found.files[0].id);
+                return sheetInfo;
+            }
+
+            // 3) só cria se comprovadamente não existe nenhuma
+            document.getElementById('status').innerHTML = '⏳ Criando a planilha pela primeira vez...';
+            const created = await api('https://sheets.googleapis.com/v4/spreadsheets', 'POST', {
+                properties: { title: SHEET_TITLE, locale: 'pt_BR', timeZone: 'America/Sao_Paulo' },
+                sheets: [{ properties: { title: 'Dados' } }]
             });
+            const id = created.spreadsheetId;
+            const sheetId = created.sheets[0].properties.sheetId;
+            store('user_spreadsheet_id', id);
+            sheetInfo = { id, locale: 'pt_BR', tab: 'Dados' };
+
+            await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}/values/Dados!A1:G1?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+
+            try {
+                const black = { red: 0, green: 0, blue: 0 };
+                const solid = { style: 'SOLID', color: black };
+                const widths = [260, 140, 140, 150, 110, 200, 170];
+                await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}:batchUpdate`, 'POST', {
+                    requests: [
+                        { repeatCell: {
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: 7 },
+                            cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 0 }, textFormat: { bold: true } } },
+                            fields: 'userEnteredFormat(backgroundColor,textFormat)'
+                        } },
+                        { updateBorders: {
+                            range: { sheetId, startRowIndex: 0, endRowIndex: 1000, startColumnIndex: 0, endColumnIndex: 7 },
+                            top: solid, bottom: solid, left: solid, right: solid, innerHorizontal: solid, innerVertical: solid
+                        } },
+                        ...widths.map((px, i) => ({ updateDimensionProperties: {
+                            range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
+                            properties: { pixelSize: px }, fields: 'pixelSize'
+                        } }))
+                    ]
+                });
+            } catch (e) { console.warn('Formatação não aplicada:', e); }
+
+            return sheetInfo;
         }
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function nowForSheet(locale) {
+            const d = new Date();
+            const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+            if ((locale || '').toLowerCase().startsWith('pt')) {
+                return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`;
+            }
+            return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${hm}`;
+        }
+
+        // mantém códigos/lotes só com números como texto (preserva zeros à esquerda)
+        function asText(v) {
+            const s = String(v ?? 'N/A');
+            return /^\d+$/.test(s) ? `'${s}` : s;
+        }
+
+        async function saveToUserGoogleSheet(data) {
+            const info = await ensureSpreadsheet();
+            const range = `'${info.tab.replace(/'/g, "''")}'!A:G`;
+            await api(
+                `https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+                'POST',
+                { values: [[
+                    data.nome || "N/A",
+                    data.validade || "N/A",
+                    asText(data.lote || "N/A"),
+                    data.fabricante || "N/A",
+                    data.obs || "N/A",
+                    asText(data.codigo || "N/A"),
+                    nowForSheet(info.locale)
+                ]] }
+            );
+        }
+
+        /* ---------- Arrastar, soltar e colar (desktop) ---------- */
+        (function () {
+            const dz = document.getElementById('drop-zone');
+            const on = ['border-indigo-500', 'bg-indigo-50'];
+            ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => {
+                e.preventDefault(); dz.classList.add(...on);
+            }));
+            ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => {
+                e.preventDefault(); dz.classList.remove(...on);
+            }));
+            dz.addEventListener('drop', e => handleFiles(Array.from(e.dataTransfer.files || [])));
+            // evita que o navegador abra o arquivo se soltar fora da área
+            ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
+            document.addEventListener('paste', e => {
+                const files = Array.from((e.clipboardData && e.clipboardData.files) || []);
+                if (files.length) handleFiles(files);
+            });
+        })();
     </script>
     <!-- Carregado depois das funções, para o onload sempre achar initGoogleAuth -->
     <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
