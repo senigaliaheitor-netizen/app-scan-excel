@@ -1,0 +1,244 @@
+/**
+ * Scan da Fernanda — backend (Google Apps Script)
+ * Roda com a SUA conta e só toca na pasta abaixo.
+ * Quem abre o link do site não precisa de login nem de acesso ao Drive.
+ *
+ * Propriedades do script (Configurações do projeto > Propriedades do script):
+ *   GEMINI_KEY  (obrigatória)  chave da API Gemini
+ *   APP_TOKEN   (opcional)     senha do link; se definida, o site precisa abrir com #k=SENHA
+ */
+const FOLDER_ID = '1hFIWg7atFwlTF1kYCBi1SjG79A56Ya1P';
+const MODEL = 'gemini-3.8-flash';
+
+const TYPES = {
+  reagentes: { label: 'Reagentes', sheet: 'Planilha de Reagentes', photos: 'Fotos Reagentes' },
+  insumos:   { label: 'Insumos',   sheet: 'Planilha de Insumos',   photos: 'Fotos Insumos' }
+};
+const HEADERS = ['Nome do Produto', 'Data de Validade', 'Lote', 'Fabricante', 'Observação', 'Código do Produto', 'Data de Cadastro', 'Foto do Rótulo', 'Status de Validade'];
+const WIDTHS = [250, 125, 110, 170, 230, 150, 140, 110, 150];
+const ALIGN = ['left', 'center', 'center', 'left', 'left', 'center', 'center', 'center', 'center'];
+const LINE = '#2B3445';
+
+/* ---------- Entrada ---------- */
+function doGet() { return out({ ok: true, msg: 'Scan da Fernanda online' }); }
+
+function doPost(e) {
+  try {
+    const req = JSON.parse(e.postData.contents);
+    const tk = PropertiesService.getScriptProperties().getProperty('APP_TOKEN');
+    if (tk && req.token !== tk) return out({ ok: false, error: 'Link sem permissão. Peça o link correto ao responsável.' });
+    let r;
+    if (req.action === 'analyze') r = analyze(req);
+    else if (req.action === 'save') r = save(req);
+    else if (req.action === 'list') r = list();
+    else throw new Error('Ação inválida.');
+    return out(Object.assign({ ok: true }, r));
+  } catch (err) {
+    return out({ ok: false, error: String(err.message || err) });
+  }
+}
+
+function out(o) {
+  return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/* Rode esta função UMA vez no editor para autorizar o script */
+function autorizar() {
+  const f = DriveApp.getFolderById(FOLDER_ID);
+  SpreadsheetApp.getActive;
+  UrlFetchApp.fetch('https://www.google.com', { muteHttpExceptions: true });
+  Logger.log('Pasta OK: ' + f.getName());
+}
+
+/* ---------- IA (Gemini) ---------- */
+function analyze(req) {
+  const key = PropertiesService.getScriptProperties().getProperty('GEMINI_KEY');
+  if (!key) throw new Error('A chave Gemini não foi configurada no script.');
+  const t = TYPES[req.type] || TYPES.reagentes;
+  const prompt = 'Analise este rótulo de produto e extraia TODAS as informações abaixo.\n' +
+    'Retorne estritamente em formato JSON válido com as seguintes chaves:\n' +
+    '{\n  "nome": "Nome do produto ou substância",\n  "validade": "Data de validade",\n  "lote": "Lote de fabricação",\n' +
+    '  "fabricante": "Nome do fabricante",\n  "obs": "Observações ou --- caso não haja",\n  "codigo": "Código numérico do produto/código de barras"\n}\n' +
+    'Se algum campo não for identificado na imagem, preencha o valor com "N/A".\n\n' +
+    'Contexto: etiqueta de laboratório (' + t.label.toLowerCase() + '), que pode estar girada, inclinada ou com texto vertical. ' +
+    'Formato típico: nome do produto em destaque; linhas VALIDADE (ou VAL), LOTE (ou LOTE FABR.), FABRICANTE (ou FAB) e OBS; ' +
+    'e um código de barras com o número impresso logo abaixo (ex.: 10035-0010-00001), que deve ir em "codigo".\n' +
+    'Regras: transcreva exatamente como impresso, mantendo hífens, zeros à esquerda e acentos. Escreva "validade" como DD/MM/AAAA. ' +
+    'Qualquer outra informação impressa (data de fabricação, CAS, nº de risco, classe, grupo de embalagem, especificações, armazenamento) ' +
+    'deve ir em "obs", separada por " | ". Use "---" em "obs" somente se não houver nada. Não invente: se não estiver legível, use "N/A".';
+
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: req.mime || 'image/jpeg', data: req.data } }] }],
+    generationConfig: { responseMimeType: 'application/json' }
+  });
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent';
+  const waits = [3000, 6000, 12000];
+  let j;
+  for (let i = 0; ; i++) {
+    const r = UrlFetchApp.fetch(url, { method: 'post', contentType: 'application/json', headers: { 'x-goog-api-key': key }, payload: body, muteHttpExceptions: true });
+    j = JSON.parse(r.getContentText());
+    if (!j.error) break;
+    const code = j.error.code, msg = j.error.message || '';
+    const m = /retry in\s+([\d.]+)s/i.exec(msg);
+    if (code === 429 || /quota|RESOURCE_EXHAUSTED/i.test(msg)) {
+      if (m && parseFloat(m[1]) <= 60 && i < waits.length) { Utilities.sleep(Math.ceil(parseFloat(m[1])) * 1000 + 1000); continue; }
+      throw new Error('Limite de uso da IA atingido. Tente novamente mais tarde.');
+    }
+    if (([500, 503, 504].indexOf(code) >= 0 || /high demand|overloaded|unavailable/i.test(msg)) && i < waits.length) { Utilities.sleep(waits[i]); continue; }
+    throw new Error('Gemini: ' + msg);
+  }
+  const p = j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts;
+  if (!p || !p[0] || !p[0].text) throw new Error('A IA não retornou um resultado válido. Tente com boa iluminação.');
+  return { data: JSON.parse(p[0].text.replace(/```json/g, '').replace(/```/g, '').trim()) };
+}
+
+/* ---------- Drive / Planilhas ---------- */
+function rootFolder() { return DriveApp.getFolderById(FOLDER_ID); }
+
+function subFolder(name) {
+  const r = rootFolder(), it = r.getFoldersByName(name);
+  return it.hasNext() ? it.next() : r.createFolder(name);
+}
+
+function getSheet(type, create) {
+  const T = TYPES[type];
+  if (!T) throw new Error('Tipo inválido.');
+  const r = rootFolder(), it = r.getFilesByName(T.sheet);
+  while (it.hasNext()) {
+    const f = it.next();
+    if (f.getMimeType() === MimeType.GOOGLE_SHEETS && !f.isTrashed()) return SpreadsheetApp.openById(f.getId()).getSheets()[0];
+  }
+  if (!create) return null;
+  const ss = SpreadsheetApp.create(T.sheet);
+  ss.setSpreadsheetLocale('pt_BR');
+  ss.setSpreadsheetTimeZone('America/Sao_Paulo');
+  DriveApp.getFileById(ss.getId()).moveTo(r);
+  const sh = ss.getSheets()[0];
+  sh.setName('Dados');
+  setup(sh);
+  return sh;
+}
+
+function setup(sh) {
+  const h = sh.getRange(1, 1, 1, 9);
+  h.setValues([HEADERS]).setBackground('#FFD400').setFontColor('#1B2236').setFontWeight('bold')
+    .setHorizontalAlignment('center').setVerticalAlignment('middle').setFontFamily('Roboto').setFontSize(10).setWrap(true);
+  sh.setRowHeight(1, 40);
+  sh.setFrozenRows(1);
+  sh.setTabColor('#FFD400');
+  sh.setHiddenGridlines(true);
+  WIDTHS.forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
+  sh.getRange('B2:B').setNumberFormat('dd/mm/yyyy');
+  sh.getRange('C2:C').setNumberFormat('@');
+  sh.getRange('F2:F').setNumberFormat('@');
+  sh.getRange('G2:G').setNumberFormat('dd/mm/yyyy hh:mm');
+  sh.getRange(1, 1, 1000, 9).setBorder(true, true, true, true, true, true, LINE, SpreadsheetApp.BorderStyle.SOLID);
+
+  const cores = { 'Sem data': ['#E3E6EC', '#4B5565'], 'OK': ['#CDEFD9', '#0F5F38'], 'Vence em 30 dias': ['#FFE9A8', '#7A4E00'], 'Vencido': ['#FBD5D1', '#A61B12'] };
+  const range = sh.getRange('I2:I');
+  sh.setConditionalFormatRules(Object.keys(cores).map(function (k) {
+    return SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(k)
+      .setBackground(cores[k][0]).setFontColor(cores[k][1]).setBold(true).setRanges([range]).build();
+  }));
+}
+
+function parseDate(s) {
+  const t = String(s || '').trim();
+  let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) return new Date(+m[3], +m[2] - 1, +m[1]);
+  m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m && +m[2] >= 1 && +m[2] <= 12) return new Date(+m[1], +m[2] - 1, +m[3]);
+  m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/); // mês/ano -> último dia do mês
+  if (m && +m[1] >= 1 && +m[1] <= 12) return new Date(+m[2], +m[1], 0);
+  return null;
+}
+
+function safeName(t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
+function norm(v) { return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' '); }
+
+function save(req) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(60000);
+  try {
+    const d = req.item || {};
+    const sh = getSheet(req.type, true);
+    if (!sh.getRange('A1').getValue()) setup(sh);
+
+    // repetido? (nome + lote + código)
+    const last = sh.getLastRow();
+    const rows = last > 1 ? sh.getRange(2, 1, last - 1, 6).getDisplayValues() : [];
+    const lote = norm(d.lote), cod = norm(d.codigo);
+    const semId = (lote === '' || lote === 'n/a') && (cod === '' || cod === 'n/a');
+    if (!semId && rows.some(function (r) { return norm(r[0]) === norm(d.nome) && norm(r[2]) === lote && norm(r[5]) === cod; })) {
+      return { status: 'duplicate' };
+    }
+
+    // foto na pasta de fotos
+    let photoLink = 'N/A', photoError = '';
+    if (req.photo && req.photo.data) {
+      try {
+        const now = new Date();
+        const ext = (req.photo.mime || 'image/jpeg').split('/')[1].replace('jpeg', 'jpg');
+        const nome = (safeName(d.nome) || 'rotulo') + '_' + (safeName(d.lote) || 'sem-lote') + '_' +
+          Utilities.formatDate(now, 'America/Sao_Paulo', 'yyyy-MM-dd_HHmmss') + '.' + ext;
+        const blob = Utilities.newBlob(Utilities.base64Decode(req.photo.data), req.photo.mime || 'image/jpeg', nome);
+        photoLink = subFolder(TYPES[req.type].photos).createFile(blob).getUrl();
+      } catch (e) { photoError = String(e.message || e); }
+    }
+
+    const row = Math.max(sh.getLastRow(), 1) + 1;
+    const dt = parseDate(d.validade);
+    sh.getRange(row, 2).setNumberFormat('dd/mm/yyyy');
+    sh.getRange(row, 3).setNumberFormat('@');
+    sh.getRange(row, 6).setNumberFormat('@');
+    sh.getRange(row, 7).setNumberFormat('dd/mm/yyyy hh:mm');
+    sh.getRange(row, 1, 1, 8).setValues([[
+      d.nome || 'N/A', dt || d.validade || 'N/A', String(d.lote || 'N/A'), d.fabricante || 'N/A',
+      d.obs || 'N/A', String(d.codigo || 'N/A'), new Date(), 'N/A'
+    ]]);
+    sh.getRange(row, 9).setFormula('=IF(ISNUMBER(B' + row + '),IF(B' + row + '<TODAY(),"Vencido",IF(B' + row + '<=TODAY()+30,"Vence em 30 dias","OK")),"Sem data")');
+
+    const line = sh.getRange(row, 1, 1, 9);
+    line.setBackground('#FFFFFF').setFontWeight('normal').setFontFamily('Roboto').setFontSize(10).setVerticalAlignment('middle')
+      .setWrap(false).setHorizontalAlignments([ALIGN])
+      .setBorder(true, true, true, true, true, true, LINE, SpreadsheetApp.BorderStyle.SOLID);
+    sh.setRowHeight(row, 30);
+    if (/^https?:\/\//i.test(photoLink)) {
+      sh.getRange(row, 8).setRichTextValue(SpreadsheetApp.newRichTextValue().setText('Ver foto').setLinkUrl(photoLink).build());
+    }
+    SpreadsheetApp.flush();
+    return { status: 'added', photoLink: photoLink, photoError: photoError };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------- Controle de validade ---------- */
+function list() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const items = [];
+  Object.keys(TYPES).forEach(function (type) {
+    const sh = getSheet(type, false);
+    if (!sh) return;
+    const last = sh.getLastRow();
+    if (last < 2) return;
+    const rng = sh.getRange(2, 1, last - 1, 8);
+    const vals = rng.getValues(), disp = rng.getDisplayValues();
+    const rich = sh.getRange(2, 8, last - 1, 1).getRichTextValues();
+    vals.forEach(function (v, i) {
+      if (!v[0]) return;
+      let dias = null, st = 'sem', ts = null;
+      if (v[1] instanceof Date) {
+        const d = new Date(v[1]);
+        d.setHours(0, 0, 0, 0);
+        dias = Math.round((d - today) / 86400000);
+        st = dias < 0 ? 'venc' : dias <= 30 ? 'soon' : 'ok';
+        ts = d.getTime();
+      }
+      items.push({ tipo: type, nome: disp[i][0], val: disp[i][1] || 'N/A', lote: disp[i][2] || 'N/A',
+        foto: rich[i][0].getLinkUrl() || '', dias: dias, st: st, ts: ts });
+    });
+  });
+  return { items: items };
+}
