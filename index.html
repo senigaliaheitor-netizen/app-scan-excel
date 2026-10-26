@@ -5,1258 +5,586 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b0630">
 <title>Scan da Fernanda</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Pacifico&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#0b0630;--txt:#f1ecff;--mut:#b4a9dd;--vio:#b45cff;--blu:#2aa8ff;--pink:#ff5ccf;--glass:rgba(22,14,75,.72);--line:rgba(180,92,255,.45)}
+:root{--t:#f1ecff;--m:#b4a9dd;--v:#b45cff;--b:#2aa8ff;--p:#ff5ccf;--g:rgba(22,14,75,.72);--l:rgba(180,92,255,.45)}
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;min-height:100vh;font-family:'Outfit',system-ui,sans-serif;color:var(--txt);background:var(--bg);overflow-x:hidden}
+body{margin:0;min-height:100vh;font-family:'Outfit',system-ui,sans-serif;color:var(--t);background:#0b0630;overflow-x:hidden}
 .hidden{display:none!important}
-.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
-.text-red-500{color:#ff8a80}.text-green-600{color:#7dffb0}.text-amber-600{color:#ffd77a}.text-slate-500{color:#b4a9dd}
-.text-\[\#A61B12\]{color:#ff8a80}.text-\[\#7A4E00\]{color:#ffd77a}
-
-/* fundo: coloque a imagem "fundo.jpg" na mesma pasta deste arquivo
-   (ou troque 'fundo.jpg' pelo seu data:image/jpeg;base64,... antigo) */
-.sky{position:fixed;inset:0;z-index:-1;background:
- linear-gradient(rgba(7,3,31,.30),rgba(7,3,31,.55)),
- url('fundo.jpg') center top/cover no-repeat #07031f}
-
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.sky{position:fixed;inset:0;z-index:-1;background:linear-gradient(rgba(7,3,31,.15),rgba(7,3,31,.50)),url('fundo%20(1).jpg') center center/cover no-repeat #07031f}
 .app{position:relative;min-height:100vh;padding:max(14px,env(safe-area-inset-top)) 18px 110px}
 .view{display:none}.view.on{display:block}
-
-/* topo */
 .top{display:flex;align-items:flex-start;gap:12px}
-.atom{font-size:40px;line-height:1;filter:drop-shadow(0 0 8px var(--blu))}
+.atom{font-size:40px;line-height:1;filter:drop-shadow(0 0 8px var(--b))}
 .title{flex:1;line-height:1;margin:0;font-weight:700;font-size:34px}
-.title span{display:block;font-family:'Pacifico',cursive;font-weight:400;font-size:52px;margin-top:-4px;background:linear-gradient(90deg,#ff7ae0,#b45cff);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 10px rgba(180,92,255,.6))}
-.gear,.greet{border:1.5px solid var(--line);background:var(--glass);color:var(--txt);border-radius:999px;backdrop-filter:blur(8px)}
-.gear{width:46px;height:46px;font-size:22px;cursor:pointer}
-.greet{display:none;border-radius:18px;padding:12px 16px;font-size:13px;gap:12px;align-items:center;max-width:300px}
-.greet b{display:block;font-size:14px}
-
-/* cartões da home */
+.title span{display:block;font-family:'Pacifico',cursive;font-weight:400;font-size:52px;margin-top:-4px;background:linear-gradient(90deg,#ff7ae0,#b45cff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.gear{width:46px;height:46px;font-size:22px;cursor:pointer;border:1.5px solid var(--l);background:var(--g);color:var(--t);border-radius:999px}
 .cards{display:grid;gap:18px;margin-top:clamp(200px,36vh,300px)}
-.cta{display:flex;align-items:center;gap:16px;width:100%;text-align:left;font:inherit;color:var(--txt);cursor:pointer;padding:20px 18px;border-radius:24px;background:var(--glass);border:2px solid var(--vio);box-shadow:0 0 22px rgba(180,92,255,.35);backdrop-filter:blur(8px);text-decoration:none;transition:transform .15s}
-.cta.drive{border-color:var(--blu);box-shadow:0 0 22px rgba(42,168,255,.35)}
-.cta:hover{transform:translateY(-2px)}
-.cta .ic{font-size:44px;flex:none}
-.cta b{display:block;font-size:22px;font-weight:600}
-.cta small{display:block;color:var(--mut);font-size:14px;margin-top:4px;line-height:1.35}
-.cta .go{margin-left:auto;font-size:26px;color:var(--vio)}
-.cta.drive .go{color:var(--blu)}
-.tag{text-align:center;font-family:'Pacifico',cursive;color:#e3d8ff;margin:26px 0 0;font-size:17px;transform:rotate(-3deg);text-shadow:0 2px 10px rgba(0,0,0,.8)}
-
-/* nav inferior */
-.nav{position:fixed;left:14px;right:14px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;padding:10px 6px;border-radius:26px;background:rgba(14,8,58,.88);border:1.5px solid var(--line);backdrop-filter:blur(10px);z-index:20}
-.nav button{background:none;border:0;color:var(--mut);font:inherit;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 10px;cursor:pointer;position:relative}
-.nav button i{font-style:normal;font-size:24px}
-.nav button.on{color:#d79bff}
-.nav button.on::after{content:"";position:absolute;bottom:-5px;width:44px;height:3px;border-radius:3px;background:var(--vio)}
-
-/* painel do scan */
-.back{background:none;border:0;color:var(--mut);font:inherit;cursor:pointer;padding:6px 0;font-size:15px}
-.panel{max-width:520px;margin:10px auto 0;background:var(--glass);border:1.5px solid var(--line);border-radius:24px;padding:20px;backdrop-filter:blur(10px);box-shadow:0 0 30px rgba(180,92,255,.25)}
-.panel h2{margin:0 0 4px;font-size:22px}
-.panel>p.sub{margin:0 0 16px;color:var(--mut);font-size:14px}
+.cta{display:flex;align-items:center;gap:16px;width:100%;text-align:left;font:inherit;color:var(--t);cursor:pointer;padding:20px 18px;border-radius:24px;background:var(--g);border:2px solid var(--v);box-shadow:0 0 22px rgba(180,92,255,.35);backdrop-filter:blur(8px)}
+.cta.ins{border-color:var(--p)}.cta.drive{border-color:var(--b)}
+.cta .ic{font-size:44px;flex:none}.cta b{display:block;font-size:22px;font-weight:600}
+.cta small{display:block;color:var(--m);font-size:14px;margin-top:4px}
+.cta .go{margin-left:auto;font-size:26px}
+.nav{position:fixed;left:14px;right:14px;bottom:max(12px,env(safe-area-inset-bottom));display:flex;justify-content:space-around;padding:10px 6px;border-radius:26px;background:rgba(14,8,58,.88);border:1.5px solid var(--l);backdrop-filter:blur(10px);z-index:20}
+.nav button{background:none;border:0;color:var(--m);font:inherit;font-size:13px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 10px;cursor:pointer;position:relative}
+.nav button i{font-style:normal;font-size:24px}.nav button.on{color:#d79bff}
+.nbadge{position:absolute;top:-4px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#ff4d4d;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
+.back{background:none;border:0;color:var(--m);font:inherit;cursor:pointer;padding:6px 0;font-size:15px}
+.panel{max-width:520px;margin:10px auto 0;background:var(--g);border:1.5px solid var(--l);border-radius:24px;padding:20px;backdrop-filter:blur(10px)}
+.panel.wide{max-width:760px}.panel h2{margin:0 0 4px;font-size:22px}
 .stack>*+*{margin-top:16px}
-.section-title{font-size:13px;font-weight:600;color:#d9ccff}
-.hint{font-size:12px;line-height:1.5;color:var(--mut)}
-.hint a{color:#d79bff}
+.st{font-size:13px;font-weight:600;color:#d9ccff}
+.hint{font-size:12px;line-height:1.5;color:var(--m)}.hint a{color:#d79bff}
 .row{display:flex;gap:8px}
-.field{width:100%;min-width:0;background:rgba(8,4,40,.7);border:1.5px solid rgba(180,92,255,.35);border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;color:var(--txt)}
-.field::placeholder{color:#7f72b8}
-.field:focus{outline:none;border-color:var(--pink);box-shadow:0 0 0 3px rgba(255,92,207,.3)}
-.btn{font:inherit;font-weight:600;border-radius:14px;cursor:pointer;border:1.5px solid transparent;color:#fff;transition:transform .12s,filter .15s;user-select:none}
-.btn:active{transform:scale(.98)}.btn:hover{filter:brightness(1.12)}
-.btn-main{background:linear-gradient(90deg,#8a3cff,#d44cff)}
-.btn-line{background:transparent;border-color:var(--vio)}
-.btn-soft{background:rgba(255,255,255,.12)}
-.btn-sheet{background:linear-gradient(90deg,#0f8a55,#17b36e)}
+.field{width:100%;min-width:0;background:rgba(8,4,40,.7);border:1.5px solid rgba(180,92,255,.35);border-radius:12px;padding:11px 12px;font:inherit;font-size:14px;color:var(--t)}
+.btn{font:inherit;font-weight:600;border-radius:14px;cursor:pointer;border:1.5px solid transparent;color:#fff}
+.main{background:linear-gradient(90deg,#8a3cff,#d44cff)}.line{background:transparent;border-color:var(--v)}
+.soft{background:rgba(255,255,255,.12)}.sheet{background:linear-gradient(90deg,#0f8a55,#17b36e)}
 .pad{padding:12px 16px;font-size:14px}
 .full{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;text-decoration:none}
-details.hint{border:1px solid rgba(180,92,255,.35);border-radius:12px}
-details summary{padding:10px 12px;cursor:pointer;font-weight:600;color:#d9ccff}
-details .in{padding:0 12px 12px}
-.ico{width:20px;height:20px;flex:none}
-#drop-zone{display:block;border:2px dashed rgba(180,92,255,.6);border-radius:16px;padding:20px;text-align:center;cursor:pointer;background:rgba(8,4,40,.4)}
-#drop-zone:hover,#drop-zone.drag{background:rgba(180,92,255,.18);border-color:var(--pink)}
-#drop-zone b{display:block;margin-top:4px}
-#image-preview{width:100%;max-height:260px;object-fit:cover;border-radius:14px;border:1.5px solid var(--line)}
-#user-info:empty{display:none}
-#user-info{display:inline-block;background:rgba(60,220,140,.18);color:#7dffb0;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;margin:0}
+#drop{display:block;border:2px dashed rgba(180,92,255,.6);border-radius:16px;padding:20px;text-align:center;cursor:pointer;background:rgba(8,4,40,.4)}
+#prev{width:100%;max-height:260px;object-fit:cover;border-radius:14px}
+#uinfo{display:inline-block;background:rgba(60,220,140,.18);color:#7dffb0;border-radius:999px;padding:4px 12px;font-size:12px;font-weight:600;margin:0}
 .chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.chip{border-radius:14px;padding:10px 4px;text-align:center}
+.chip{border-radius:14px;padding:10px 4px;text-align:center;cursor:pointer;border:1.5px solid transparent;font:inherit}
 .chip .n{font-size:28px;font-weight:700;line-height:1}.chip .l{font-size:11px;margin-top:4px}
-.chip-bad{background:rgba(255,80,70,.22);color:#ff9d95}.chip-warn{background:rgba(255,200,60,.2);color:#ffd77a}.chip-ok{background:rgba(60,220,140,.2);color:#7dffb0}
-#review-panel{background:rgba(255,92,207,.1);border:1.5px solid var(--pink);border-radius:16px;padding:16px}
-.rv-label{display:block;font-size:12px;font-weight:600;color:#d9ccff;margin-top:10px}
-.rv-label .field{margin-top:4px}
+.chip.sel{border-color:#fff}
+.bad{background:rgba(255,80,70,.22);color:#ff9d95}.warn{background:rgba(255,200,60,.2);color:#ffd77a}.okc{background:rgba(60,220,140,.2);color:#7dffb0}
+#rev{background:rgba(255,92,207,.1);border:1.5px solid var(--p);border-radius:16px;padding:16px}
+.rl{display:block;font-size:12px;font-weight:600;color:#d9ccff;margin-top:10px}.rl .field{margin-top:4px}
 #status:empty{display:none}
-#status{background:rgba(8,4,40,.6);border:1.5px solid var(--line);border-left:5px solid var(--vio);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.6;color:#d9ccff}
-#status b{color:#fff}
-
-/* fila de análise */
-#queue-box{background:rgba(8,4,40,.55);border:1.5px solid var(--line);border-radius:14px;padding:12px}
+#status{background:rgba(8,4,40,.6);border:1.5px solid var(--l);border-left:5px solid var(--v);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.6;color:#d9ccff}
+#qbox{background:rgba(8,4,40,.55);border:1.5px solid var(--l);border-radius:14px;padding:12px}
 .qi{display:flex;align-items:center;gap:8px;padding:7px 10px;margin-top:6px;border-radius:10px;background:rgba(255,255,255,.07);font-size:13px}
 .qi .qn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qi .qs{flex:none;font-weight:600}
-.qi button{background:none;border:0;color:#ff9d95;cursor:pointer;font-size:15px}
-.qi.work{border:1.5px solid var(--pink)}
-.qi.ok .qs{color:#7dffb0}.qi.err .qs{color:#ff9d95}.qi.dup .qs,.qi.skip .qs{color:#ffd77a}
-
-/* controle de validade */
-.panel.wide{max-width:760px}
-.cta.ins{border-color:var(--pink);box-shadow:0 0 22px rgba(255,92,207,.35)}
-.cta.ins .go{color:var(--pink)}
+.qi button{background:none;border:0;color:#ff9d95;cursor:pointer}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.seg button{font:inherit;font-weight:600;color:var(--txt);background:rgba(255,255,255,.08);border:1.5px solid var(--line);border-radius:14px;padding:11px;cursor:pointer}
-.seg button.on{background:linear-gradient(90deg,#8a3cff,#d44cff);border-color:transparent}
-.vstrip{margin:18px auto 0;max-width:1100px;background:var(--glass);border:1.5px solid var(--line);border-radius:22px;padding:14px;backdrop-filter:blur(8px)}
-.vstrip .t{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;font-weight:600;font-size:14px}
-.vstrip .t button{background:none;border:0;color:#d79bff;font:inherit;font-size:13px;cursor:pointer;text-decoration:underline}
-.chip{cursor:pointer;border:1.5px solid transparent;font:inherit}
-.chip.sel{border-color:#fff}
+.seg button,.flt button{font:inherit;font-weight:600;color:var(--t);background:rgba(255,255,255,.08);border:1.5px solid var(--l);border-radius:14px;padding:11px;cursor:pointer}
+.seg button.on,.flt button.on{background:linear-gradient(90deg,#8a3cff,#d44cff);border-color:transparent}
 .flt{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
-.flt button{font:inherit;font-size:13px;color:var(--txt);background:rgba(255,255,255,.08);border:1.5px solid var(--line);border-radius:999px;padding:6px 14px;cursor:pointer}
-.flt button.on{background:linear-gradient(90deg,#8a3cff,#d44cff);border-color:transparent}
-.pr{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(8,4,40,.55);border:1.5px solid var(--line);border-left-width:5px;margin-top:10px}
+.flt button{font-size:13px;border-radius:999px;padding:6px 14px}
+.vstrip{margin:18px auto 0;max-width:1100px;background:var(--g);border:1.5px solid var(--l);border-radius:22px;padding:14px}
+.vstrip .t{display:flex;justify-content:space-between;margin-bottom:10px;font-weight:600;font-size:14px}
+.vstrip .t button{background:none;border:0;color:#d79bff;font:inherit;cursor:pointer;text-decoration:underline}
+.pr{display:flex;gap:12px;align-items:center;padding:12px 14px;border-radius:14px;background:rgba(8,4,40,.55);border:1.5px solid var(--l);border-left-width:5px;margin-top:10px}
 .pr.venc{border-left-color:#ff6a5f}.pr.soon{border-left-color:#ffc83c}.pr.ok{border-left-color:#3cdc8c}.pr.sem{border-left-color:#8c84b8}
-.pr .nm{font-weight:600;font-size:15px;word-break:break-word}
-.pr .mt{font-size:12px;color:var(--mut);margin-top:2px}
-.pr a{color:#d79bff}
-.pr .bd{margin-left:auto;text-align:center;font-size:12px;font-weight:700;border-radius:12px;padding:6px 10px;flex:none;line-height:1.25}
+.pr .nm{font-weight:600;font-size:15px;word-break:break-word}.pr .mt{font-size:12px;color:var(--m);margin-top:2px}.pr a{color:#d79bff}
+.pr .bd{margin-left:auto;text-align:center;font-size:12px;font-weight:700;border-radius:12px;padding:6px 10px;flex:none}
 .bd.venc{background:rgba(255,80,70,.25);color:#ff9d95}.bd.soon{background:rgba(255,200,60,.22);color:#ffd77a}.bd.ok{background:rgba(60,220,140,.2);color:#7dffb0}.bd.sem{background:rgba(255,255,255,.1);color:#cfc6f0}
-.nbadge{position:absolute;top:-4px;right:-2px;min-width:18px;height:18px;border-radius:9px;background:#ff4d4d;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px}
-
-/* ===== DESKTOP ===== */
 @media(min-width:900px){
- .app{padding:22px 40px 120px}
- .atom{font-size:56px}
- .title{font-size:44px}.title span{font-size:70px}
- .greet{display:flex}
- .cards{grid-template-columns:repeat(3,1fr);max-width:1100px;margin:clamp(220px,52vh,480px) auto 0;gap:22px}
- .tag{display:none}
- .nav{left:0;right:0;bottom:0;border-radius:0;border-width:1.5px 0 0;justify-content:center;gap:90px;padding:14px}
- .nav button{flex-direction:row;gap:10px;font-size:15px}.nav button i{font-size:22px}
- .nav button.on::after{bottom:-8px}
- .panel{margin-top:20px}
-}
-@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+.app{padding:22px 40px 120px}.title{font-size:44px}.title span{font-size:70px}
+.cards{grid-template-columns:repeat(3,1fr);max-width:1100px;margin:clamp(220px,52vh,480px) auto 0;gap:22px}
+.nav{left:0;right:0;bottom:0;border-radius:0;justify-content:center;gap:90px;padding:14px}
+.nav button{flex-direction:row;gap:10px;font-size:15px}}
 </style>
 </head>
 <body>
 <div class="sky"></div>
-
 <div class="app">
 
- <!-- ===== INÍCIO ===== -->
- <section id="v-home" class="view on">
-  <div class="top">
-   <span class="atom" aria-hidden="true">⚛️</span>
-   <h1 class="title">Scan da<span>Fernanda</span></h1>
-   <div class="greet"><span style="font-size:26px">🧪</span><div><b>Olá, Fernanda!</b>Que os seus scans sejam sempre precisos!</div><span style="font-size:20px">⚙️</span></div>
-   <button class="gear" type="button" aria-label="Configurações" onclick="go('scan')" id="gear-btn">⚙</button>
+<section id="v-home" class="view on">
+ <div class="top">
+  <span class="atom">⚛️</span>
+  <h1 class="title">Scan da<span>Fernanda</span></h1>
+  <button class="gear" type="button" aria-label="Configurações" onclick="go('scan')">⚙</button>
+ </div>
+ <div class="cards">
+  <button type="button" class="cta" onclick="openScan('reagentes')"><span class="ic">🧪</span><span><b>Scan de Reagentes</b><small>Leia a etiqueta e cadastre na planilha de reagentes.</small></span><span class="go">›</span></button>
+  <button type="button" class="cta ins" onclick="openScan('insumos')"><span class="ic">📦</span><span><b>Scan de Insumos</b><small>Leia a etiqueta e cadastre na planilha de insumos.</small></span><span class="go">›</span></button>
+  <button type="button" class="cta drive" onclick="openDrive()"><span class="ic">📁</span><span><b>Abrir o Drive</b><small>Abra a pasta do app, com as planilhas.</small></span><span class="go">›</span></button>
+ </div>
+ <div class="vstrip hidden" id="home-exp">
+  <div class="t"><span>⏳ Controle de validade</span><button type="button" onclick="go('hist')">Ver lista</button></div>
+  <div class="chips">
+   <button type="button" class="chip bad" onclick="go('hist');setF('venc')"><div id="s-venc" class="n">0</div><div class="l">Vencidos</div></button>
+   <button type="button" class="chip warn" onclick="go('hist');setF('soon')"><div id="s-soon" class="n">0</div><div class="l">Vencem em 30 dias</div></button>
+   <button type="button" class="chip okc" onclick="go('hist');setF('ok')"><div id="s-ok" class="n">0</div><div class="l">Em dia</div></button>
   </div>
+ </div>
+</section>
 
-  <div class="cards">
-   <button type="button" class="cta" onclick="openScan('reagentes')">
-    <span class="ic">🧪</span><span><b>Scan de Reagentes</b><small>Leia a etiqueta e cadastre na planilha de reagentes.</small></span><span class="go">›</span>
-   </button>
-   <button type="button" class="cta ins" onclick="openScan('insumos')">
-    <span class="ic">📦</span><span><b>Scan de Insumos</b><small>Leia a etiqueta e cadastre na planilha de insumos.</small></span><span class="go">›</span>
-   </button>
-   <button type="button" class="cta drive" id="drive-link" onclick="openDrive()">
-    <span class="ic">
-     <svg width="44" height="44" viewBox="0 0 48 48"><path fill="#0066da" d="M6 36l4 7h28l4-7z"/><path fill="#00ac47" d="M17 5L2 31l4 5 15-26z"/><path fill="#ea4335" d="M31 5H17l15 26h14z"/></svg>
-    </span>
-    <span><b>Abrir o Drive</b><small>Abra a pasta do app, com as planilhas.</small></span><span class="go">›</span>
-   </button>
+<section id="v-scan" class="view">
+ <button class="back" type="button" onclick="go('home')">← Início</button>
+ <div class="panel stack">
+  <div class="seg" id="seg">
+   <button type="button" data-t="reagentes" class="on" onclick="setType('reagentes')">🧪 Reagentes</button>
+   <button type="button" data-t="insumos" onclick="setType('insumos')">📦 Insumos</button>
   </div>
-  <div class="vstrip hidden" id="home-exp">
-   <div class="t"><span>⏳ Controle de validade</span><button type="button" onclick="go('hist')">Ver lista</button></div>
-   <div class="chips">
-    <button type="button" class="chip chip-bad" onclick="go('hist');setFilter('venc')"><div id="s-expired" class="n">0</div><div class="l">Vencidos</div></button>
-    <button type="button" class="chip chip-warn" onclick="go('hist');setFilter('soon')"><div id="s-soon" class="n">0</div><div class="l">Vencem em 30 dias</div></button>
-    <button type="button" class="chip chip-ok" onclick="go('hist');setFilter('ok')"><div id="s-ok" class="n">0</div><div class="l">Em dia</div></button>
+  <div><h2 id="scan-title">Scan de Reagentes</h2>
+   <p class="hint" style="margin:0;font-size:14px">Fotografe ou envie o rótulo (até 10 arquivos por vez). A IA lê os dados, um arquivo de cada vez, e cada produto vira uma linha na sua planilha.</p></div>
+  <section class="stack">
+   <label for="gkey" class="st">Chave da API Gemini</label>
+   <div class="row">
+    <input id="gkey" type="password" autocomplete="off" placeholder="Cole sua chave aqui" class="field">
+    <button type="button" onclick="toggleKey()" class="btn soft pad">👁</button>
+    <button type="button" onclick="saveKey()" class="btn main pad">Salvar</button>
    </div>
+   <p id="kstat" class="hint">Fica salva só neste navegador. Crie a sua em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+  </section>
+  <details class="hint"><summary class="st">Opções avançadas</summary>
+   <label for="mname" class="st">Modelo da IA</label>
+   <div class="row"><input id="mname" type="text" placeholder="padrão: gemini-3.8-flash" class="field"><button type="button" onclick="saveModel()" class="btn soft pad">Usar</button></div>
+   <p id="mstat">Deixe em branco para o padrão.</p>
+  </details>
+  <div id="auth" style="text-align:center">
+   <button onclick="authClick()" class="btn main full" style="padding:14px;font-size:16px">Conectar com Google</button>
+   <p id="astat" class="hint"></p>
   </div>
-  <p class="tag">Mais organização para o seu dia! ♡</p>
- </section>
-
- <!-- ===== SCAN ===== -->
- <section id="v-scan" class="view">
-  <button class="back" type="button" onclick="go('home')">← Início</button>
-  <div class="panel stack">
-   <div class="seg" id="type-seg">
-    <button type="button" data-t="reagentes" class="on" onclick="setType('reagentes')">🧪 Reagentes</button>
-    <button type="button" data-t="insumos" onclick="setType('insumos')">📦 Insumos</button>
-   </div>
-   <div>
-    <h2 id="scan-title">Scan de Reagentes</h2>
-    <p class="sub" style="margin:0;color:var(--mut);font-size:14px">Fotografe ou envie o rótulo (até 10 arquivos por vez). A IA lê os dados, um arquivo de cada vez, e cada produto vira uma linha na sua planilha.</p>
-   </div>
-
-   <section class="stack" style="margin-top:0">
-    <label for="gemini-key" class="section-title">Chave da API Gemini</label>
-    <div class="row">
-     <input id="gemini-key" type="password" autocomplete="off" placeholder="Cole sua chave aqui" class="field">
-     <button type="button" onclick="toggleKey()" aria-label="Mostrar ou ocultar a chave" class="btn btn-soft pad">👁</button>
-     <button type="button" onclick="saveKey()" class="btn btn-main pad">Salvar</button>
+  <div id="cap" class="stack hidden">
+   <div style="text-align:center"><p id="uinfo"></p></div>
+   <a id="open-sheet" href="#" target="_blank" rel="noopener" class="btn sheet full hidden" style="padding:12px">📊 Abrir minha planilha</a>
+   <label class="btn main full" style="padding:16px;font-size:18px">📷 Tirar foto
+    <input type="file" accept="image/*" capture="environment" class="sr" onchange="pick(event)"></label>
+   <label class="btn line full" style="padding:14px;font-size:16px">🖼️ Enviar da galeria (até 10)
+    <input type="file" accept="image/*" multiple class="sr" onchange="pick(event)"></label>
+   <label id="drop"><span style="font-size:26px">⬆️</span><b style="display:block">Enviar arquivos (até 10 na fila)</b>
+    <span class="hint" style="display:block">Clique, arraste fotos ou PDF, ou cole com Ctrl+V</span>
+    <input type="file" accept="image/*,application/pdf" multiple class="sr" onchange="pick(event)"></label>
+   <div id="qbox" class="hidden"></div>
+   <div id="pbox" class="hidden"><img id="prev" alt="Pré-visualização"></div>
+   <div id="rev" class="hidden">
+    <p style="margin:0;font-weight:700;font-size:16px">Confira os dados lidos</p>
+    <p class="hint" style="margin:2px 0 0">Corrija o que estiver errado e salve. Nada vai para a planilha antes disso.</p>
+    <div id="rfields"></div>
+    <div class="row" style="margin-top:14px">
+     <button type="button" id="rsave" class="btn main pad" style="flex:1">✔ Salvar na planilha</button>
+     <button type="button" id="rcancel" class="btn line pad">Descartar</button>
     </div>
-    <p id="key-status" class="hint" style="margin-top:8px">Fica salva só neste navegador, nunca no código do site. Crie a sua em <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
-   </section>
-
-   <details class="hint">
-    <summary>Opções avançadas</summary>
-    <div class="in stack">
-     <div>
-      <label for="model-name" class="section-title">Modelo da IA</label>
-      <div class="row" style="margin-top:6px">
-       <input id="model-name" type="text" placeholder="padrão: gemini-3.8-flash" class="field">
-       <button type="button" onclick="saveModel()" class="btn btn-soft pad">Usar</button>
-      </div>
-      <p id="model-status">Cada modelo tem a sua própria cota gratuita. Deixe em branco para o padrão.</p>
-     </div>
-    </div>
-   </details>
-
-   <div id="auth-section" style="text-align:center">
-    <button id="authorize_button" onclick="handleAuthClick()" class="btn btn-main full" style="padding:14px;font-size:16px">
-     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
-     <span id="auth_button_text">Conectar com Google</span>
-    </button>
-    <p id="auth-status" class="hint" style="margin-top:10px"></p>
    </div>
-
-   <div id="capture-section" class="stack hidden">
-    <div style="text-align:center"><p id="user-info"></p></div>
-
-    <a id="open-sheet" href="#" target="_blank" rel="noopener" class="btn btn-sheet full hidden" style="padding:12px;font-size:15px">
-     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M4 9h16M4 15h16M10 9v12"/></svg>
-     Abrir minha planilha
-    </a>
-
-    <label class="btn btn-main full" style="padding:16px;font-size:18px">
-     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8a2 2 0 0 1 2-2h1.5l1.2-2h6.6l1.2 2H18a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8z"/><circle cx="12" cy="13" r="3.5"/></svg>
-     <span>Tirar foto</span>
-     <input type="file" accept="image/*" capture="environment" id="camera-input" class="sr-only" onchange="processFiles(event)">
-    </label>
-
-    <label class="btn btn-line full" style="padding:14px;font-size:16px">
-     <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M21 16l-5-5-8 9"/></svg>
-     <span>Enviar da galeria (até 10)</span>
-     <input type="file" accept="image/*" multiple id="gallery-input" class="sr-only" onchange="processFiles(event)">
-    </label>
-
-    <label id="drop-zone">
-     <span style="font-size:26px">⬆️</span>
-     <b>Enviar arquivos (até 10 na fila)</b>
-     <span class="hint" style="display:block;margin-top:2px">Clique, arraste prints, fotos ou PDF para cá, ou cole com Ctrl+V</span>
-     <input type="file" id="file-input" accept="image/*,application/pdf" multiple class="sr-only" onchange="processFiles(event)">
-    </label>
-
-    <div id="queue-box" class="hidden"></div>
-
-    <div id="preview-container" class="hidden"><img id="image-preview" alt="Pré-visualização"></div>
-
-    <div id="review-panel" class="hidden">
-     <p style="margin:0;font-weight:700;font-size:16px">Confira os dados lidos</p>
-     <p class="hint" style="margin:2px 0 0">Corrija o que estiver errado e salve. Nada vai para a planilha antes disso. O próximo arquivo da fila só é analisado depois.</p>
-     <div id="review-fields"></div>
-     <div class="row" style="margin-top:14px">
-      <button type="button" id="review-save" class="btn btn-main pad" style="flex:1">✔ Salvar na planilha</button>
-      <button type="button" id="review-cancel" class="btn btn-line pad">Descartar</button>
-     </div>
-    </div>
-
-    <div id="status" role="status" aria-live="polite"></div>
-   </div>
+   <div id="status" role="status" aria-live="polite"></div>
   </div>
- </section>
+ </div>
+</section>
 
- <!-- ===== HISTÓRICO ===== -->
- <section id="v-hist" class="view">
-  <div class="panel wide">
-   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
-    <h2 style="margin:0">Controle de validade</h2>
-    <button type="button" class="btn btn-soft pad" onclick="loadExpiry()">Atualizar</button>
-   </div>
-   <p class="sub" style="margin:4px 0 14px">Todos os produtos da sua planilha, do que vence primeiro ao que vence por último.</p>
-   <div class="chips">
-    <button type="button" class="chip chip-bad" data-f="venc" onclick="setFilter('venc')"><div id="h-expired" class="n">0</div><div class="l">Vencidos</div></button>
-    <button type="button" class="chip chip-warn" data-f="soon" onclick="setFilter('soon')"><div id="h-soon" class="n">0</div><div class="l">Vencem em 30 dias</div></button>
-    <button type="button" class="chip chip-ok" data-f="ok" onclick="setFilter('ok')"><div id="h-ok" class="n">0</div><div class="l">Em dia</div></button>
-   </div>
-   <div class="flt" id="exp-types">
-    <button type="button" data-t="all" class="on" onclick="setTypeFilter('all')">Reagentes + Insumos</button>
-    <button type="button" data-t="reagentes" onclick="setTypeFilter('reagentes')">🧪 Reagentes</button>
-    <button type="button" data-t="insumos" onclick="setTypeFilter('insumos')">📦 Insumos</button>
-   </div>
-   <div class="flt" id="exp-filters" style="margin-top:0">
-    <button type="button" data-f="all" class="on" onclick="setFilter('all')">Todos</button>
-    <button type="button" data-f="venc" onclick="setFilter('venc')">Vencidos</button>
-    <button type="button" data-f="soon" onclick="setFilter('soon')">30 dias</button>
-    <button type="button" data-f="ok" onclick="setFilter('ok')">Em dia</button>
-    <button type="button" data-f="sem" onclick="setFilter('sem')">Sem data</button>
-   </div>
-   <div id="exp-list"></div>
+<section id="v-hist" class="view">
+ <div class="panel wide">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+   <h2 style="margin:0">Controle de validade</h2>
+   <button type="button" class="btn soft pad" onclick="loadExpiry()">Atualizar</button>
   </div>
- </section>
+  <p class="hint" style="margin:4px 0 14px;font-size:14px">Todos os produtos da sua planilha, do que vence primeiro ao que vence por último.</p>
+  <div class="chips">
+   <button type="button" class="chip bad" data-f="venc" onclick="setF('venc')"><div id="h-venc" class="n">0</div><div class="l">Vencidos</div></button>
+   <button type="button" class="chip warn" data-f="soon" onclick="setF('soon')"><div id="h-soon" class="n">0</div><div class="l">Vencem em 30 dias</div></button>
+   <button type="button" class="chip okc" data-f="ok" onclick="setF('ok')"><div id="h-ok" class="n">0</div><div class="l">Em dia</div></button>
+  </div>
+  <div class="flt" id="ftypes">
+   <button type="button" data-t="all" class="on" onclick="setT('all')">Reagentes + Insumos</button>
+   <button type="button" data-t="reagentes" onclick="setT('reagentes')">🧪 Reagentes</button>
+   <button type="button" data-t="insumos" onclick="setT('insumos')">📦 Insumos</button>
+  </div>
+  <div class="flt" id="fst" style="margin-top:0">
+   <button type="button" data-f="all" class="on" onclick="setF('all')">Todos</button>
+   <button type="button" data-f="venc" onclick="setF('venc')">Vencidos</button>
+   <button type="button" data-f="soon" onclick="setF('soon')">30 dias</button>
+   <button type="button" data-f="ok" onclick="setF('ok')">Em dia</button>
+   <button type="button" data-f="sem" onclick="setF('sem')">Sem data</button>
+  </div>
+  <div id="elist"></div>
+ </div>
+</section>
 
- <!-- ===== MEUS ARQUIVOS ===== -->
- <section id="v-files" class="view">
-  <div class="panel stack">
-   <h2>Meus Arquivos</h2>
-   <p class="sub">As planilhas e as fotos das etiquetas ficam na pasta <b>Scan da Fernanda</b> do Drive.</p>
-   <button type="button" id="files-folder" class="btn btn-main full pad" onclick="openDrive()">📁 Abrir pasta no Drive</button>
-   <a id="files-sheet-reagentes" class="btn btn-sheet full pad hidden" href="#" target="_blank" rel="noopener">📊 Planilha de Reagentes</a>
-   <a id="files-sheet-insumos" class="btn btn-sheet full pad hidden" href="#" target="_blank" rel="noopener">📊 Planilha de Insumos</a>
-  </div>
- </section>
+<section id="v-files" class="view">
+ <div class="panel stack">
+  <h2>Meus Arquivos</h2>
+  <p class="hint" style="font-size:14px">As planilhas e as fotos das etiquetas ficam na pasta <b>Scan da Fernanda</b> do Drive.</p>
+  <button type="button" class="btn main full pad" onclick="openDrive()">📁 Abrir pasta no Drive</button>
+  <a id="fs-reagentes" class="btn sheet full pad hidden" href="#" target="_blank" rel="noopener">📊 Planilha de Reagentes</a>
+  <a id="fs-insumos" class="btn sheet full pad hidden" href="#" target="_blank" rel="noopener">📊 Planilha de Insumos</a>
+ </div>
+</section>
 
 </div>
 
-<nav class="nav" aria-label="Navegação">
+<nav class="nav">
  <button type="button" data-v="home" class="on" onclick="go('home')"><i>🏠</i>Início</button>
- <button type="button" data-v="hist" onclick="go('hist')"><i>🕒</i>Histórico<span class="nbadge hidden" id="nav-badge">0</span></button>
+ <button type="button" data-v="hist" onclick="go('hist')"><i>🕒</i>Histórico<span class="nbadge hidden" id="nbadge">0</span></button>
  <button type="button" data-v="files" onclick="go('files')"><i>📁</i>Meus Arquivos</button>
 </nav>
 
 <script>
-/* navegação entre telas */
-function go(v){
-  const map={home:'v-home',scan:'v-scan',hist:'v-hist',files:'v-files'};
-  document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id===map[v]));
-  document.querySelectorAll('.nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===(v==='scan'?'home':v)));
-  window.scrollTo(0,0);
-  refreshLinks();
-  if(v==='hist'&&window.loadExpiry)loadExpiry();
-}
-function refreshLinks(){
-  try{
-    ['reagentes','insumos'].forEach(t=>{
-      const sid=localStorage.getItem('user_spreadsheet_id_'+t);
-      const a=document.getElementById('files-sheet-'+t);
-      if(sid){a.href='https://docs.google.com/spreadsheets/d/'+sid+'/edit';a.classList.remove('hidden');}
-    });
-  }catch(e){}
-}
-refreshLinks();
-</script>
-
-<script>
-const CLIENT_ID = '295173125810-r7f6lq1vfrkrt9s1rem7pjv1rfedm3j8.apps.googleusercontent.com';
-const GEMINI_MODEL = 'gemini-3.8-flash';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-// Opcional: se colar sua chave Gemini aqui, ela vale em todo aparelho. Atenção: em repositório público, qualquer pessoa pode ler e usar essa chave.
-const GEMINI_KEY_DEFAULT = '';
-
-let tokenClient;
-let accessToken = null;
-let busy = false;
-let notices = [];
-var currentType = 'reagentes';
-
-/* a planilha é guardada separadamente para cada tipo (reagentes / insumos) */
-function K(k) { return k === 'user_spreadsheet_id' ? k + '_' + currentType : k; }
-function store(k, v) { try { localStorage.setItem(K(k), v); } catch (e) {} }
-function load(k) { try { return localStorage.getItem(K(k)); } catch (e) { return null; } }
-
-/* ---------- Chave Gemini (só no navegador) ---------- */
-function getKey() {
-    return document.getElementById('gemini-key').value.trim() || load('gemini_key') || GEMINI_KEY_DEFAULT || '';
-}
-function saveKey() {
-    const v = document.getElementById('gemini-key').value.trim();
-    const el = document.getElementById('key-status');
-    if (!v) {
-        el.innerHTML = '<span class="text-red-500">Cole a chave antes de salvar.</span>';
-        return;
-    }
-    store('gemini_key', v);
-    el.innerHTML = '<span class="text-green-600">✅ Chave salva neste navegador.</span>';
-}
-function toggleKey() {
-    const i = document.getElementById('gemini-key');
-    i.type = i.type === 'password' ? 'text' : 'password';
-}
-document.getElementById('gemini-key').value = load('gemini_key') || '';
-
-/* ---------- Modelo da IA e mensagens de cota ---------- */
-function getModel() { return (load('gemini_model') || '').trim() || GEMINI_MODEL; }
-function saveModel() {
-    const v = document.getElementById('model-name').value.trim();
-    store('gemini_model', v);
-    document.getElementById('model-status').innerHTML = v
-        ? `<span class="text-green-600">✅ Usando o modelo <b>${escapeHtml(v)}</b> neste navegador.</span>`
-        : '<span class="text-green-600">✅ Voltou ao modelo padrão.</span>';
-}
-document.getElementById('model-name').value = load('gemini_model') || '';
-
-function retrySeconds(msg) {
-    const m = /retry in\s+(?:(\d+)h)?\s*(?:(\d+)m)?\s*([\d.]+)s/i.exec(msg || '');
-    return m ? (+m[1] || 0) * 3600 + (+m[2] || 0) * 60 + parseFloat(m[3]) : null;
-}
-function quotaMessage(msg) {
-    const secs = retrySeconds(msg);
-    const lim = /limit:\s*(\d+)/i.exec(msg || '');
-    let quando = '';
-    if (secs) { const h = Math.floor(secs / 3600), mi = Math.ceil((secs % 3600) / 60); quando = ` Libera de novo em cerca de h?h+'h':''{mi}min.`; }
-    return `Limite de uso da IA atingido${lim ? ` (limite de ${lim[1]} no plano gratuito)` : ''}.${quando} Para continuar agora: ative o faturamento no projeto do Google Cloud ou informe outro modelo em "Opções avançadas".`;
-}
-
-/* ---------- Login Google ---------- */
-function initGoogleAuth() {
-    if (!(window.google && google.accounts && google.accounts.oauth2)) return;
-    tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: CLIENT_ID,
-        scope: SCOPES,
-        callback: (resp) => {
-            if (resp && resp.access_token) {
-                accessToken = resp.access_token;
-                document.getElementById('auth-section').classList.add('hidden');
-                document.getElementById('capture-section').classList.remove('hidden');
-                document.getElementById('user-info').innerText = '● Conta do Google conectada';
-                updateSheetButton();
-                loadSummary();
-            } else if (resp && resp.error) {
-                document.getElementById('auth-status').innerHTML =
-                    `<span class="text-red-500">Erro: ${resp.error_description || resp.error}</span>`;
-            }
-        },
-    });
-}
-
-function handleAuthClick() {
-    const statusEl = document.getElementById('auth-status');
-    if (!tokenClient) initGoogleAuth();
-    if (!tokenClient) {
-        statusEl.innerText = 'Aguarde o carregamento do serviço Google...';
-        return;
-    }
-    statusEl.innerText = 'Abrindo autenticação...';
-    tokenClient.requestAccessToken({ prompt: '' });
-}
-
-/* ---------- Utilitários ---------- */
-function escapeHtml(t) {
-    return String(t ?? '').replace(/[&<>"']/g, c =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-function convertBase64(file) {
-    return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(r.result);
-        r.onerror = reject;
-        r.readAsDataURL(file);
-    });
-}
-
-/* ---------- Fila de análise: até 10 arquivos, processados um por um ---------- */
-const MAX_QUEUE = 10;
-let queue = [], queueRunning = false, queueResults = [], queueSeq = 0, queueNote = '';
-const QLABEL = { wait: '⏳ Na fila', work: '🔄 Em análise', ok: '✅ Salvo', dup: '⚠️ Repetido', skip: '⏭️ Descartado', err: '❌ Erro' };
-
-function pendingCount() { return queue.filter(q => q.state === 'wait' || q.state === 'work').length; }
-
-function renderQueue() {
-    const box = document.getElementById('queue-box');
-    if (!queue.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
-    box.classList.remove('hidden');
-    box.innerHTML =
-        `<p class="section-title" style="margin:0">Fila de análise · ${pendingCount()} de ${MAX_QUEUE} vagas ocupadas</p>` +
-        (queueNote ? `<p class="hint" style="margin:6px 0 0;color:#ffd77a">${escapeHtml(queueNote)}</p>` : '') +
-        queue.map(q => `<div class="qi q.state"><spanclass="qn">{escapeHtml(q.file.name || 'foto')}</span>` +
-            `<span class="qs">${QLABEL[q.state]}</span>` +
-            (q.state === 'wait' ? `<button type="button" aria-label="Remover da fila" onclick="removeFromQueue(${q.id})">✕</button>` : '') +
-            `</div>`).join('');
-}
-
-function removeFromQueue(id) {
-    queue = queue.filter(q => !(q.id === id && q.state === 'wait'));
-    renderQueue();
-}
-
-function processFiles(event) {
-    const files = Array.from(event.target.files || []);
-    event.target.value = '';
-    handleFiles(files);
-}
-
-async function handleFiles(files) {
-    files = files.filter(f => (f.type || '').startsWith('image/') || f.type === 'application/pdf');
-    if (!files.length) return;
-    if (!accessToken) {
-        document.getElementById('auth-status').innerHTML = '<span class="text-red-500">Conecte com o Google antes de enviar arquivos.</span>';
-        return;
-    }
-    if (!getKey()) {
-        document.getElementById('status').innerHTML = '<span class="text-red-500">❌ Cole sua chave da API Gemini no campo acima e clique em Salvar.</span>';
-        return;
-    }
-    const room = MAX_QUEUE - pendingCount();
-    queueNote = '';
-    if (room <= 0) {
-        queueNote = `A fila está cheia (${MAX_QUEUE}). Aguarde liberar vagas para enviar mais.`;
-        renderQueue();
-        return;
-    }
-    if (files.length > room) {
-        queueNote = `Só cabem mais ${room} arquivo(s) na fila (máximo ${MAX_QUEUE}). ${files.length - room} ficaram de fora.`;
-        files = files.slice(0, room);
-    }
-    files.forEach(f => queue.push({ id: ++queueSeq, file: f, state: 'wait' }));
-    renderQueue();
-    runQueue();
-}
-
-async function runQueue() {
-    if (queueRunning) return;
-    queueRunning = true; busy = true;
-    const status = document.getElementById('status');
-    let item;
-    while ((item = queue.find(q => q.state === 'wait'))) {
-        item.state = 'work'; renderQueue();
-        const label = queue.length > 1 ? ` (queue.indexOf(item)+1/{queue.length})` : '';
-        const nm = escapeHtml(item.file.name || 'foto');
-        try {
-            const data = await processOne(item.file, getKey(), label);
-            if (data._skipped) {
-                item.state = 'skip';
-                queueResults.push(`⏭️ <b>${escapeHtml(data.nome)}</b> descartado — não foi salvo.`);
-            } else if (data._dup) {
-                item.state = 'dup';
-                queueResults.push(`⚠️ <b>${escapeHtml(data.nome)}</b> (lote ${escapeHtml(data.lote)}) já estava cadastrado — não foi repetido.`);
-            } else {
-                item.state = 'ok';
-                queueResults.push(`✅ <b>${escapeHtml(data.nome)}</b> — validade ${escapeHtml(data.validade)}, lote ${escapeHtml(data.lote)}` +
-                    (data._photoError ? `<br><span class="text-amber-600">⚠️ Dados salvos, mas a foto não foi para o Drive (${escapeHtml(data._photoError)}).</span>` : ''));
-            }
-        } catch (error) {
-            console.error(error);
-            item.state = 'err';
-            queueResults.push(`<span class="text-red-500">❌ ${nm}: ${escapeHtml(error.message)}</span>`);
-        }
-        renderQueue();
-    }
-    status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados na <b>escapeHtml(TYPES[currentType].sheet)</b>(pasta<b>{escapeHtml(ROOT_FOLDER_TITLE)}</b> no Drive).<br><br>` +
-        queueResults.join('<br>') +
-        (notices.length ? '<br><br><span class="text-amber-600">' + notices.map(escapeHtml).join('<br>') + '</span>' : '');
-    queue = []; queueResults = []; notices = []; queueNote = '';
-    busy = false; queueRunning = false;
-    renderQueue();
-    loadSummary();
-}
-
-async function processOne(file, key, label) {
-    const status = document.getElementById('status');
-    if ((file.type || '').startsWith('image/')) {
-        document.getElementById('image-preview').src = URL.createObjectURL(file);
-        document.getElementById('preview-container').classList.remove('hidden');
-    } else {
-        document.getElementById('preview-container').classList.add('hidden');
-    }
-    status.innerHTML = `⏳ Analisando imagem com IA...${label}`;
-
-    const base64Image = await convertBase64(file);
-    const pureBase64 = base64Image.split(',')[1];
-
-    const promptText = `Analise este rótulo de produto e extraia TODAS as informações abaixo.
-Retorne estritamente em formato JSON válido com as seguintes chaves:
-{
-  "nome": "Nome do produto ou substância",
-  "validade": "Data de validade",
-  "lote": "Lote de fabricação",
-  "fabricante": "Nome do fabricante",
-  "obs": "Observações ou --- caso não haja",
-  "codigo": "Código numérico do produto/código de barras"
-}
-Se algum campo não for identificado na imagem, preencha o valor com "N/A".
-
-Contexto: etiqueta de laboratório (${TYPES[currentType].label.toLowerCase()}), que pode estar girada, inclinada ou com texto vertical. Formato típico: nome do produto em destaque; linhas VALIDADE (ou VAL), LOTE (ou LOTE FABR.), FABRICANTE (ou FAB) e OBS; e um código de barras com o número impresso logo abaixo (ex.: 10035-0010-00001), que deve ir em "codigo".
-Regras: transcreva exatamente como impresso, mantendo hífens, zeros à esquerda e acentos. Escreva "validade" como DD/MM/AAAA. Qualquer outra informação impressa (data de fabricação, CAS, nº de risco, classe, grupo de embalagem, especificações, armazenamento) deve ir em "obs", separada por " | ". Use "---" em "obs" somente se não houver nada. Não invente: se não estiver legível, use "N/A".`;
-
-    const reqBody = JSON.stringify({
-        contents: [{
-            parts: [
-                { text: promptText },
-                { inline_data: { mime_type: file.type || 'image/jpeg', data: pureBase64 } }
-            ]
-        }],
-        generationConfig: { responseMimeType: 'application/json' }
-    });
-
-    // servidor ocupado: tenta de novo sozinho (3s, 6s, 12s). Cota esgotada: não adianta repetir
-    const waits = [3000, 6000, 12000];
-    let geminiData = null;
-    for (let attempt = 0; ; attempt++) {
-        let waitMs = waits[Math.min(attempt, waits.length - 1)];
-        try {
-            const resp = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${getModel()}:generateContent`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-                body: reqBody
-            });
-            geminiData = await resp.json();
-            if (!geminiData.error) break;
-            const code = geminiData.error.code, msg = geminiData.error.message || '';
-            if (code === 429 || /quota|RESOURCE_EXHAUSTED/i.test(msg)) {
-                const secs = retrySeconds(msg);
-                if (secs !== null && secs <= 60) waitMs = Math.ceil(secs) * 1000 + 1000; // limite por minuto: espera e repete
-                else throw new Error(quotaMessage(msg));                                   // limite do dia: repetir não resolve
-            } else if (!([500, 503, 504].includes(code) || /high demand|overloaded|unavailable|try again later/i.test(msg))) {
-                throw new Error(`Gemini: ${msg}`);
-            }
-            if (attempt >= waits.length) throw new Error('A IA está com muita demanda no momento. Aguarde alguns minutos e envie de novo.');
-        } catch (e) {
-            // falha de rede também merece nova tentativa; qualquer outro erro encerra
-            if (!(e instanceof TypeError) || attempt >= waits.length) throw e;
-        }
-        status.innerHTML = `⏳ A IA está ocupada, tentando de novo (attempt+1/{waits.length})...${label}`;
-        await new Promise(r => setTimeout(r, waitMs));
-    }
-
-    const parts = geminiData.candidates?.[0]?.content?.parts;
-    if (!parts || !parts[0]?.text) {
-        throw new Error('A IA não retornou um resultado válido. Tente com boa iluminação.');
-    }
-
-    const cleanJsonText = parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const data = JSON.parse(cleanJsonText);
-
-    const reviewed = await reviewData(data, label);
-    if (!reviewed) { data._skipped = true; return data; }
-    Object.assign(data, reviewed);
-
-    status.innerHTML = `⏳ Salvando na planilha Google...${label}`;
-    const outcome = await saveToUserGoogleSheet(data, file);
-    data._dup = (outcome === 'duplicate');
-    return data;
-}
-
-/* ---------- Conferência antes de salvar ---------- */
-const REVIEW_FIELDS = [
-    ['nome', 'Nome do Produto'], ['validade', 'Data de Validade'], ['lote', 'Lote'],
-    ['fabricante', 'Fabricante'], ['obs', 'Observação'], ['codigo', 'Código do Produto']
-];
-
-function reviewData(data, label) {
-    return new Promise(resolve => {
-        const panel = document.getElementById('review-panel');
-        const box = document.getElementById('review-fields');
-        box.innerHTML = REVIEW_FIELDS.map(([k, name]) => `
-            <label class="rv-label">${name}
-                <input data-k="k"type="text"value="{escapeHtml(data[k] ?? 'N/A')}"
-                       class="field">
-            </label>`).join('');
-        document.getElementById('status').innerHTML = `✏️ Aguardando sua conferência...${label}`;
-        panel.classList.remove('hidden');
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-        const done = (result) => {
-            panel.classList.add('hidden');
-            document.getElementById('review-save').onclick = null;
-            document.getElementById('review-cancel').onclick = null;
-            resolve(result);
-        };
-        document.getElementById('review-save').onclick = () => {
-            const out = {};
-            box.querySelectorAll('input').forEach(i => { out[i.dataset.k] = i.value.trim() || 'N/A'; });
-            done(out);
-        };
-        document.getElementById('review-cancel').onclick = () => done(null);
-    });
-}
-
-/* ---------- Google Planilhas ---------- */
-const HEADERS = ["Nome do Produto", "Data de Validade", "Lote", "Fabricante", "Observação", "Código do Produto", "Data de Cadastro", "Foto do Rótulo", "Status de Validade"];
-let sheetInfo = null; // {id, locale, tab} guardado em memória nesta sessão
-
-async function api(url, method = 'GET', body) {
-    const res = await fetch(url, {
-        method,
-        headers: Object.assign({ 'Authorization': `Bearer ${accessToken}` },
-            body ? { 'Content-Type': 'application/json' } : {}),
-        body: body ? JSON.stringify(body) : undefined
-    });
-    const json = await res.json().catch(() => ({}));
-    if (json.error) {
-        const msg = json.error.code === 401
-            ? 'Sessão do Google expirou. Recarregue a página e conecte de novo.'
-            : `Google: ${json.error.message}`;
-        const err = new Error(msg);
-        err.code = json.error.code;
-        throw err;
-    }
-    return json;
-}
-
-async function getSpreadsheetInfo(id) {
-    const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${id}?fields=properties(title,locale),sheets(properties(sheetId,title))`);
-    return { id, locale: (j.properties && j.properties.locale) || '', tab: j.sheets[0].properties.title, sheetId: j.sheets[0].properties.sheetId };
-}
-
-// arquivo apagado vai para a lixeira, mas continua legível pelo ID: precisa checar
-async function isTrashed(id) {
-    try {
-        const f = await api(`https://www.googleapis.com/drive/v3/files/${id}?fields=trashed`);
-        return !!f.trashed;
-    } catch (e) {
-        if (e.code === 401) throw e;
-        return false;
-    }
-}
-
-function pad2(n) { return String(n).padStart(2, '0'); }
-function nowForSheet(locale) {
-    const d = new Date();
-    const hm = `pad2(d.getHours()):{pad2(d.getMinutes())}`;
-    if ((locale || '').toLowerCase().startsWith('pt')) {
-        return `pad2(d.getDate())/{pad2(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`;
-    }
-    return `d.getFullYear()-{pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${hm}`;
-}
-
-// mantém códigos/lotes só com números como texto (preserva zeros à esquerda)
-function asText(v) {
-    const s = String(v ?? 'N/A');
-    return /^\d+/.test(s)?`'{s}` : s;
-}
-
-/* ---------- Pastas e foto do rótulo no Drive ---------- */
-const ROOT_FOLDER_TITLE = 'Scan da Fernanda';
-const FOLDER_MIME = 'application/vnd.google-apps.folder';
-const folderCache = {};
-
-async function folderAlive(id) {
-    try {
-        const f = await api(`https://www.googleapis.com/drive/v3/files/${id}?fields=id,trashed`);
-        return !f.trashed;
-    } catch (e) { if (e.code === 404) return false; throw e; }
-}
-
-async function findOrCreateFolder(name, parentId, storeKey) {
-    if (folderCache[storeKey]) return folderCache[storeKey];
-    const saved = load(storeKey);
-    if (saved && await folderAlive(saved)) { folderCache[storeKey] = saved; return saved; }
-
-    let q = `name='name'andmimeType='{FOLDER_MIME}' and trashed=false`;
-    if (parentId) q += ` and '${parentId}' in parents`;
-    try {
-        const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
-        if (f.files && f.files.length) { store(storeKey, f.files[0].id); folderCache[storeKey] = f.files[0].id; return f.files[0].id; }
-    } catch (e) { if (e.code === 401) throw e; console.warn('Busca da pasta falhou:', e); }
-
-    const body = { name, mimeType: FOLDER_MIME };
-    if (parentId) body.parents = [parentId];
-    const c = await api('https://www.googleapis.com/drive/v3/files?fields=id', 'POST', body);
-    store(storeKey, c.id); folderCache[storeKey] = c.id;
-    return c.id;
-}
-
-// coloca a planilha dentro da pasta do app, caso ainda não esteja (uma tentativa por sessão)
-async function ensureSheetInFolder(info) {
-    if (info.triedMove) return;
-    info.triedMove = true;
-    try {
-        const root = await ensureRootFolder();
-        const f = await api(`https://www.googleapis.com/drive/v3/files/${info.id}?fields=parents`);
-        const parents = f.parents || [];
-        if (!parents.includes(root)) {
-            const remove = parents.length ? `&removeParents=${encodeURIComponent(parents.join(','))}` : '';
-            await api(`https://www.googleapis.com/drive/v3/files/info.id?addParents={root}${remove}&fields=id,parents`, 'PATCH', {});
-        }
-    } catch (e) {
-        if (e.code === 401) throw e;
-        console.warn('Não foi possível guardar a planilha na pasta:', e);
-        notices.push(`⚠️ Planilha não foi movida para a pasta "${ROOT_FOLDER_TITLE}": ${e.message}`);
-    }
-}
-
-function safeName(t) { return String(t || '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
-
-async function uploadLabelPhoto(file, data) {
-    const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop().toLowerCase()
-        : ((file.type || '').split('/')[1] || 'jpg');
-    const d = new Date();
-    const stamp = `d.getFullYear()-{pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}pad2(d.getMinutes()){pad2(d.getSeconds())}`;
-    const name = `${safeName(data.nome) || 'rotulo'}_${safeName(data.lote) || 'sem-lote'}_stamp.{ext}`;
-
-    const send = async (folderId) => {
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify({ name, parents: [folderId] })], { type: 'application/json' }));
-        form.append('file', file);
-        const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', {
-            method: 'POST', headers: { 'Authorization': `Bearer ${accessToken}` }, body: form
-        });
-        const json = await res.json().catch(() => ({}));
-        if (json.error) { const e = new Error(json.error.message); e.code = json.error.code; throw e; }
-        return json;
-    };
-
-    let folderId = await ensureImagesFolder();
-    try { return (await send(folderId)).webViewLink; }
-    catch (e) {
-        if (e.code === 404) { resetImagesFolder(); folderId = await ensureImagesFolder(); return (await send(folderId)).webViewLink; }
-        throw e;
-    }
-}
-
-/* ---------- Formatação: só a 1ª linha amarela, resto branco, bordas em tudo ---------- */
-const hex = (h) => ({ red: parseInt(h.slice(1, 3), 16) / 255, green: parseInt(h.slice(3, 5), 16) / 255, blue: parseInt(h.slice(5, 7), 16) / 255 });
-const BORDER = { style: 'SOLID', color: hex('#2B3445') };
-const WHITE = { red: 1, green: 1, blue: 1 };
-const YELLOW = hex('#FFD400');
-const INK = hex('#1B2236');
-const NCOLS = 9;
-const COL_WIDTHS = [250, 125, 110, 170, 230, 150, 140, 110, 150];
-const COL_ALIGN = ['LEFT', 'CENTER', 'CENTER', 'LEFT', 'LEFT', 'CENTER', 'CENTER', 'CENTER', 'CENTER'];
-const STATUS_COLORS = {
-    'Vencido':          { bg: '#FBD5D1', fg: '#A61B12' },
-    'Vence em 30 dias': { bg: '#FFE9A8', fg: '#7A4E00' },
-    'OK':               { bg: '#CDEFD9', fg: '#0F5F38' },
-    'Sem data':         { bg: '#E3E6EC', fg: '#4B5565' }
-};
-
-function rowRange(sheetId, from, to) {
-    return { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: 0, endColumnIndex: NCOLS };
-}
-// linhas de dados: fundo branco, fonte única, alinhamento por coluna, bordas
-function bodyRequests(sheetId, from, to) {
-    const reqs = [
-        { repeatCell: { range: rowRange(sheetId, from, to),
-            cell: { userEnteredFormat: { backgroundColor: WHITE, verticalAlignment: 'MIDDLE', wrapStrategy: 'CLIP',
-                textFormat: { bold: false, fontFamily: 'Roboto', fontSize: 10 } } },
-            fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.fontSize' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: from, endIndex: to },
-            properties: { pixelSize: 30 }, fields: 'pixelSize' } },
-        { updateBorders: { range: rowRange(sheetId, from, to),
-            top: BORDER, bottom: BORDER, left: BORDER, right: BORDER, innerHorizontal: BORDER, innerVertical: BORDER } }
-    ];
-    COL_ALIGN.forEach((al, c) => reqs.push({ repeatCell: {
-        range: { sheetId, startRowIndex: from, endRowIndex: to, startColumnIndex: c, endColumnIndex: c + 1 },
-        cell: { userEnteredFormat: { horizontalAlignment: al } }, fields: 'userEnteredFormat.horizontalAlignment' } }));
-    return reqs;
-}
-function formatRequests(sheetId, endRow) {
-    return [
-        { repeatCell: { range: rowRange(sheetId, 0, 1),
-            cell: { userEnteredFormat: { backgroundColor: YELLOW, horizontalAlignment: 'CENTER', verticalAlignment: 'MIDDLE', wrapStrategy: 'WRAP',
-                textFormat: { bold: true, fontFamily: 'Roboto', fontSize: 10, foregroundColor: INK } } },
-            fields: 'userEnteredFormat.backgroundColor,userEnteredFormat.horizontalAlignment,userEnteredFormat.verticalAlignment,userEnteredFormat.wrapStrategy,userEnteredFormat.textFormat.bold,userEnteredFormat.textFormat.fontFamily,userEnteredFormat.textFormat.fontSize,userEnteredFormat.textFormat.foregroundColor' } },
-        { updateDimensionProperties: { range: { sheetId, dimension: 'ROWS', startIndex: 0, endIndex: 1 },
-            properties: { pixelSize: 40 }, fields: 'pixelSize' } },
-        ...bodyRequests(sheetId, 1, endRow),
-        { updateBorders: { range: rowRange(sheetId, 0, 1),
-            top: BORDER, bottom: { style: 'SOLID_MEDIUM', color: BORDER.color }, left: BORDER, right: BORDER, innerVertical: BORDER } },
-        ...COL_WIDTHS.map((px, i) => ({ updateDimensionProperties: {
-            range: { sheetId, dimension: 'COLUMNS', startIndex: i, endIndex: i + 1 },
-            properties: { pixelSize: px }, fields: 'pixelSize' } })),
-        { updateSheetProperties: { properties: { sheetId, tabColor: YELLOW,
-            gridProperties: { frozenRowCount: 1, hideGridlines: true } },
-            fields: 'tabColor,gridProperties.frozenRowCount,gridProperties.hideGridlines' } }
-    ];
-}
-
-// transforma uma célula da coluna H em link clicável "Ver foto"
-function linkCellRequest(sheetId, rowIndex, url) {
-    return { updateCells: {
-        range: { sheetId, startRowIndex: rowIndex, endRowIndex: rowIndex + 1, startColumnIndex: 7, endColumnIndex: 8 },
-        rows: [{ values: [{ userEnteredValue: { stringValue: 'Ver foto' }, userEnteredFormat: { textFormat: { link: { uri: url } } } }] }],
-        fields: 'userEnteredValue,userEnteredFormat.textFormat.link'
-    } };
-}
-
-/* ---------- Garantia de link clicável: lê a célula de volta e usa a fórmula HYPERLINK se preciso ---------- */
-async function cellHasLink(info, tab, addr) {
-    const g = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id?ranges={encodeURIComponent(tab + '!' + addr)}&fields=sheets(data(rowData(values(formattedValue,hyperlink))))`);
-    const c = (((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData || [])[0];
-    const cell = c && c.values && c.values[0];
-    return !!(cell && cell.hyperlink);
-}
-
-async function verifyLinkCell(info, row, col, url, text) {
-    try {
-        const tab = `'${info.tab.replace(/'/g, "''")}'`;
-        const addr = `col{row}`;
-        if (await cellHasLink(info, tab, addr)) return true;
-
-        // método 2: fórmula HYPERLINK (testa ";" e "," conforme o idioma da planilha)
-        const guess = (info.locale || '').toLowerCase().startsWith('pt') ? ';' : ',';
-        const seps = [info.sep, guess, guess === ';' ? ',' : ';'].filter((v, i, a) => v && a.indexOf(v) === i);
-        const put = (val) => api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!' + addr)}?valueInputOption=USER_ENTERED`, 'PUT', { values: [[val]] });
-        for (const sep of seps) {
-            try {
-                await put(`=HYPERLINK("url"{sep}"${text}")`);
-                if (await cellHasLink(info, tab, addr)) return true;
-            } catch (e) { if (e.code === 401) throw e; }
-        }
-        await put(url); // deixa o endereço completo na célula, para copiar
-        notices.push(`⚠️ Não consegui deixar o link da foto clicável na linha ${row}. O endereço ficou escrito na célula ${addr}.`);
-        return false;
-    } catch (e) { if (e.code === 401) throw e; console.warn('Verificação do link falhou:', e); return false; }
-}
-
-// uma vez por sessão: formata a planilha inteira (idempotente)
-async function ensureFormatting(info) {
-    if (info.fmtOk) return;
-    try {
-        await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
-            { requests: formatRequests(info.sheetId, 1000) });
-    } catch (e) { console.warn('Formatação geral não aplicada:', e); }
-    info.fmtOk = true;
-}
-
-// após cada cadastro: a linha nova herda o amarelo da de cima, então é refeita em branco
-async function formatNewRow(info, appendResp, photoLink) {
-    try {
-        const m = /!?[A-Z]+(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
-        if (!m) return;
-        const row = parseInt(m[1], 10);
-        if (row < 2) return;
-        await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
-            { requests: bodyRequests(info.sheetId, row - 1, row) });
-    } catch (e) { console.warn('Formatação da nova linha não aplicada:', e); }
-    try {
-        const m2 = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
-        if (m2 && /^https?:\/\//i.test(photoLink || '')) {
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST',
-                { requests: [linkCellRequest(info.sheetId, parseInt(m2[1], 10) - 1, photoLink)] });
-            await verifyLinkCell(info, parseInt(m2[1], 10), 'H', photoLink, 'Ver foto');
-        }
-    } catch (e) { console.warn('Link da foto não aplicado:', e);
-        notices.push(`⚠️ O link da foto não foi aplicado na planilha: ${e.message}`);
-    }
-}
-
-/* ---------- Status de validade (coluna I, colorida) ---------- */
-function normalizeDate(v) {
-    const t = String(v || '').trim();
-    let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
-    if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) return `pad2(m[1])/{pad2(m[2])}/${m[3]}`;
-    m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (m && +m[2] >= 1 && +m[2] <= 12) return `pad2(m[3])/{pad2(m[2])}/${m[1]}`;
-    m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/); // mês/ano -> último dia do mês
-    if (m && +m[1] >= 1 && +m[1] <= 12) return `pad2(newDate(+m[2],+m[1],0).getDate())/{pad2(m[1])}/${m[2]}`;
-    return t;
-}
-
-function statusFormula(row, sep) {
-    return `=IF(ISNUMBER(Brow){sep}IF(Brow<TODAY(){sep}"Vencido"sepIF(B{row}<=TODAY()+30sep"Venceem30dias"{sep}"OK"))${sep}"Sem data")`;
-}
-
-// grava a fórmula; descobre sozinho se o Google quer ";" ou "," e lembra
-async function writeStatusFormulas(info, rows) {
-    if (!rows.length) return true;
-    const tab = `'${info.tab.replace(/'/g, "''")}'`;
-    const guess = (info.locale || '').toLowerCase().startsWith('pt') ? ';' : ',';
-    const order = [info.sep, guess, guess === ';' ? ',' : ';'].filter((v, i, a) => v && a.indexOf(v) === i);
-    for (const sep of order) {
-        try {
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values:batchUpdate`, 'POST', {
-                valueInputOption: 'USER_ENTERED',
-                data: rows.map(r => ({ range: `tab!I{r}`, values: [[statusFormula(r, sep)]] }))
-            });
-            if (info.sep) return true;
-            const chk = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!I' + rows[0])}`);
-            const val = chk.values && chk.values[0] && chk.values[0][0];
-            if (val && !String(val).startsWith('#') && !String(val).startsWith('=')) { info.sep = sep; return true; }
-        } catch (e) { if (e.code === 401) throw e; console.warn('Fórmula de status com', sep, 'falhou:', e); }
-    }
-    return false;
-}
-
-async function ensureStatusColumn(info) {
-    if (info.statusOk) return;
-    info.statusOk = true;
-    try {
-        const tab = `'${info.tab.replace(/'/g, "''")}'`;
-        // cores (uma vez por planilha)
-        const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?fields=sheets(properties(sheetId),conditionalFormats(booleanRule(condition(values(userEnteredValue)),format(backgroundColor))))`);
-        const mine = (meta.sheets || []).find(sh => sh.properties.sheetId === info.sheetId) || {};
-        const rules = mine.conditionalFormats || [];
-        const isStatus = (cf) => ((cf.booleanRule && cf.booleanRule.condition && cf.booleanRule.condition.values) || [])
-            .some(v => STATUS_COLORS[v.userEnteredValue]);
-        const upToDate = rules.some(cf => isStatus(cf) && cf.booleanRule.condition.values[0].userEnteredValue === 'Vencido'
-            && Math.abs(((cf.booleanRule.format.backgroundColor || {}).green || 0) - hex(STATUS_COLORS['Vencido'].bg).green) < 0.01);
-        if (!upToDate) {
-            const del = [];
-            for (let i = rules.length - 1; i >= 0; i--) if (isStatus(rules[i])) del.push({ deleteConditionalFormatRule: { sheetId: info.sheetId, index: i } });
-            const range = [{ sheetId: info.sheetId, startRowIndex: 1, endRowIndex: 5000, startColumnIndex: 8, endColumnIndex: 9 }];
-            const rule = (text) => ({ addConditionalFormatRule: { index: 0, rule: { ranges: range, booleanRule: {
-                condition: { type: 'TEXT_EQ', values: [{ userEnteredValue: text }] },
-                format: { backgroundColor: hex(STATUS_COLORS[text].bg), textFormat: { foregroundColor: hex(STATUS_COLORS[text].fg), bold: true } } } } } });
-            await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}:batchUpdate`, 'POST', { requests: [
-                ...del, rule('Sem data'), rule('OK'), rule('Vence em 30 dias'), rule('Vencido')
-            ] });
-        }
-        // linhas sem status
-        const all = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A2:I1000')}`);
-        const missing = [];
-        (all.values || []).forEach((r, i) => { if (r && r[0] && !r[8]) missing.push(i + 2); });
-        await writeStatusFormulas(info, missing);
-    } catch (e) { if (e.code === 401) throw e; console.warn('Coluna de status não configurada:', e); }
-}
-
-async function addStatusForNewRow(info, appendResp) {
-    try {
-        const m = /(\d+):[A-Z]+(\d+)$/.exec((appendResp.updates && appendResp.updates.updatedRange) || '');
-        if (m && parseInt(m[1], 10) >= 2) await writeStatusFormulas(info, [parseInt(m[1], 10)]);
-    } catch (e) { if (e.code === 401) throw e; console.warn('Status da nova linha não gravado:', e); }
-}
-
-function norm(v) { return String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' '); }
-
-function updateSheetButton() {
-    const id = (sheetInfo && sheetInfo.id) || load('user_spreadsheet_id');
-    const a = document.getElementById('open-sheet');
-    if (id) {
-        a.href = `https://docs.google.com/spreadsheets/d/${id}/edit`;
-        a.classList.remove('hidden');
-    }
-}
-
-async function isDuplicate(info, tabRange, data) {
-    const lote = norm(data.lote), cod = norm(data.codigo);
-    // sem lote e sem código não dá para afirmar que é repetido
-    if ((lote === '' || lote === 'n/a') && (cod === '' || cod === 'n/a')) return false;
-    const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tabRange)}`);
-    const rows = (j.values || []).slice(1); // pula o cabeçalho
-    return rows.some(r => norm(r[0]) === norm(data.nome) && norm(r[2]) === lote && norm(r[5]) === cod);
-}
-
-async function saveToUserGoogleSheet(data, file) {
-    const info = await ensureSpreadsheet();
-    updateSheetButton();
-    await ensureHeaders(info);
-    await ensureFormatting(info);
-    await ensureSheetInFolder(info);
-    await ensureStatusColumn(info);
-    const range = `'${info.tab.replace(/'/g, "''")}'!A:H`;
-
-    if (await isDuplicate(info, range, data)) return 'duplicate';
-
-    let photoLink = 'N/A';
-    if (file) {
-        try {
-            document.getElementById('status').innerHTML = '⏳ Guardando a foto no Drive...';
-            photoLink = await uploadLabelPhoto(file, data);
-        } catch (e) {
-            console.warn('Foto não enviada ao Drive:', e);
-            data._photoError = /has not been used|is disabled|accessNotConfigured/i.test(e.message)
-                ? 'a Google Drive API ainda não está ativada no projeto — veja o passo a passo'
-                : e.message;
-        }
-    }
-
-    const appended = await api(
-        `https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
-        'POST',
-        { values: [[
-            data.nome || "N/A",
-            ((info.locale || '').toLowerCase().startsWith('pt') ? normalizeDate(data.validade) : data.validade) || "N/A",
-            asText(data.lote || "N/A"),
-            data.fabricante || "N/A",
-            data.obs || "N/A",
-            asText(data.codigo || "N/A"),
-            nowForSheet(info.locale),
-            photoLink
-        ]] }
-    );
-    await formatNewRow(info, appended, photoLink);
-    await addStatusForNewRow(info, appended);
-    return 'added';
-}
-
-/* ---------- Arrastar, soltar e colar (desktop) ---------- */
-(function () {
-    const dz = document.getElementById('drop-zone');
-    ['dragenter', 'dragover'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('drag'); }));
-    ['dragleave', 'drop'].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('drag'); }));
-    dz.addEventListener('drop', e => handleFiles(Array.from(e.dataTransfer.files || [])));
-    // evita que o navegador abra o arquivo se soltar fora da área
-    ['dragover', 'drop'].forEach(ev => window.addEventListener(ev, e => e.preventDefault()));
-    document.addEventListener('paste', e => {
-        const files = Array.from((e.clipboardData && e.clipboardData.files) || []);
-        if (files.length) handleFiles(files);
-    });
-})();
-</script>
-
-<script>
-/* ===== Tipos, pasta fixa no Drive, planilha única por tipo e controle de validade ===== */
-const TYPES = {
+var CLIENT_ID = '295173125810-r7f6lq1vfrkrt9s1rem7pjv1rfedm3j8.apps.googleusercontent.com';
+var MODEL = 'gemini-3.8-flash';
+var SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
+var ROOT = '1hFIWg7atFwlTF1kYCBi1SjG79A56Ya1P';
+var S = 'https://sheets.googleapis.com/v4/spreadsheets/';
+var D = 'https://www.googleapis.com/drive/v3/files';
+var TYPES = {
   reagentes: { label: 'Reagentes', emoji: '🧪', sheet: 'Planilha de Reagentes', photos: 'Fotos Reagentes' },
-  insumos:   { label: 'Insumos',   emoji: '📦', sheet: 'Planilha de Insumos',   photos: 'Fotos Insumos' }
+  insumos: { label: 'Insumos', emoji: '📦', sheet: 'Planilha de Insumos', photos: 'Fotos Insumos' }
 };
-const infoCache = {};
+var HEAD = ['Nome do Produto', 'Data de Validade', 'Lote', 'Fabricante', 'Observação', 'Código do Produto', 'Data de Cadastro', 'Foto do Rótulo', 'Status de Validade'];
+var tok = null, client = null, cur = 'reagentes', busy = false, running = false, seq = 0, queue = [], items = [], fType = 'all', fSt = 'all', sheetInfo = null;
+var QL = { wait: '⏳ Na fila', work: '🔄 Em análise', ok: '✅ Salvo', dup: '⚠️ Repetido', skip: '⏭️ Descartado', err: '❌ Erro' };
+var LAB = { venc: 'Vencido', soon: 'Vence em 30 dias', ok: 'Em dia', sem: 'Sem data' };
 
-/* O app só trabalha dentro desta pasta do Drive */
-const FIXED_ROOT_ID = '1hFIWg7atFwlTF1kYCBi1SjG79A56Ya1P';
+function el(i) { return document.getElementById(i); }
+function ls(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function ss(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function esc(t) { return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function pad(n) { return String(n).padStart(2, '0'); }
+function nm(v) { return String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' '); }
+function safe(t) { return String(t || 'x').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60); }
+function txt(v) { var s = String(v || 'N/A'); return /^\d+$/.test(s) ? "'" + s : s; }
+function tq(tab) { return "'" + tab.replace(/'/g, "''") + "'"; }
+function sidKey(t) { return 'user_spreadsheet_id_' + (t || cur); }
 
-async function ensureRootFolder() {
-  if (folderCache.root_fixed) return FIXED_ROOT_ID;
-  let ok = false;
-  try { ok = await folderAlive(FIXED_ROOT_ID); }
-  catch (e) { if (e.code === 401) throw e; }
-  if (!ok) throw new Error('Sem acesso à pasta do app no Drive. Peça ao responsável para compartilhar a pasta com a sua conta Google (como Editor).');
-  folderCache.root_fixed = true;
-  return FIXED_ROOT_ID;
+/* ---------- navegação ---------- */
+function go(v) {
+  var m = { home: 'v-home', scan: 'v-scan', hist: 'v-hist', files: 'v-files' };
+  document.querySelectorAll('.view').forEach(function (e) { e.classList.toggle('on', e.id === m[v]); });
+  document.querySelectorAll('.nav button').forEach(function (b) { b.classList.toggle('on', b.dataset.v === (v === 'scan' ? 'home' : v)); });
+  window.scrollTo(0, 0);
+  refreshLinks();
+  if (v === 'hist') loadExpiry();
 }
-async function ensureImagesFolder() {
-  const root = await ensureRootFolder();
-  return findOrCreateFolder(TYPES[currentType].photos, root, 'images_' + currentType);
+function refreshLinks() {
+  Object.keys(TYPES).forEach(function (t) {
+    var id = ls(sidKey(t)), a = el('fs-' + t);
+    if (id) { a.href = 'https://docs.google.com/spreadsheets/d/' + id + '/edit'; a.classList.remove('hidden'); }
+  });
 }
-function resetImagesFolder() { const k = 'images_' + currentType; delete folderCache[k]; store(k, ''); }
-
-async function ensureHeaders(info) {
-  if (info.hdrOk) return;
-  const tab = "'" + info.tab.replace(/'/g, "''") + "'";
-  const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A1')}`);
-  if (!(j.values && j.values[0] && j.values[0][0]))
-    await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A1:I1')}?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
-  info.hdrOk = true;
-}
-
-/* Reaproveita sempre a planilha existente: ID salvo -> busca na pasta do app -> só então cria (já dentro da pasta) */
-async function ensureSpreadsheet() {
-  const T = TYPES[currentType];
-  const remember = (info) => { sheetInfo = info; infoCache[currentType] = info; return info; };
-  if (sheetInfo) {
-    if (!(await isTrashed(sheetInfo.id))) return sheetInfo;
-    store('user_spreadsheet_id', ''); sheetInfo = null;
-  }
-  const savedId = load('user_spreadsheet_id');
-  if (savedId) {
-    try {
-      if (await isTrashed(savedId)) store('user_spreadsheet_id', '');
-      else return remember(await getSpreadsheetInfo(savedId));
-    } catch (e) {
-      if (e.code !== 404 && e.code !== 403) throw e;
-      store('user_spreadsheet_id', '');
-    }
-  }
-  const root = await ensureRootFolder();
-  const q = `name='T.sheet'andmimeType='application/vnd.google-apps.spreadsheet'andtrashed=falseand'{root}' in parents`;
-  try {
-    const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
-    if (f.files && f.files.length) { store('user_spreadsheet_id', f.files[0].id); return remember(await getSpreadsheetInfo(f.files[0].id)); }
-  } catch (e) { if (e.code === 401) throw e; console.warn('Busca da planilha falhou:', e); }
-
-  // não existe nenhuma: cria já dentro da pasta do app
-  document.getElementById('status').innerHTML = `⏳ Criando a ${T.sheet.toLowerCase()} pela primeira vez...`;
-  const f = await api('https://www.googleapis.com/drive/v3/files?fields=id', 'POST',
-    { name: T.sheet, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [root] });
-  store('user_spreadsheet_id', f.id);
-  const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${f.id}?fields=sheets(properties(sheetId))`);
-  const sheetId = meta.sheets[0].properties.sheetId;
-  await api(`https://sheets.googleapis.com/v4/spreadsheets/${f.id}:batchUpdate`, 'POST', { requests: [
-    { updateSpreadsheetProperties: { properties: { locale: 'pt_BR', timeZone: 'America/Sao_Paulo' }, fields: 'locale,timeZone' } },
-    { updateSheetProperties: { properties: { sheetId, title: 'Dados' }, fields: 'title' } }
-  ] });
-  return remember({ id: f.id, locale: 'pt_BR', tab: 'Dados', sheetId, triedMove: true });
-}
-
-/* ---------- Tipo de scan e Drive ---------- */
+function openDrive() { window.open('https://drive.google.com/drive/folders/' + ROOT, '_blank'); }
 function setType(t) {
   if (busy) return;
-  currentType = t;
-  const c = infoCache[t];
-  sheetInfo = (c && c.id === load('user_spreadsheet_id')) ? c : null;
-  document.querySelectorAll('#type-seg button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
-  document.getElementById('scan-title').textContent = 'Scan de ' + TYPES[t].label;
-  document.getElementById('open-sheet').classList.add('hidden');
-  updateSheetButton();
+  cur = t; sheetInfo = null;
+  document.querySelectorAll('#seg button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === t); });
+  el('scan-title').textContent = 'Scan de ' + TYPES[t].label;
+  setBtn();
 }
 function openScan(t) { setType(t); go('scan'); }
-
-function openDrive() {
-  window.open('https://drive.google.com/drive/folders/' + FIXED_ROOT_ID, '_blank');
+function setBtn() {
+  var id = ls(sidKey()), a = el('open-sheet');
+  if (id) { a.href = 'https://docs.google.com/spreadsheets/d/' + id + '/edit'; a.classList.remove('hidden'); }
+  else a.classList.add('hidden');
 }
 
-/* ---------- Controle de validade (Reagentes + Insumos) ---------- */
-let expItems = [], expFilter = 'all', expType = 'all';
-const EXP_LABEL = { venc: 'Vencido', soon: 'Vence em 30 dias', ok: 'Em dia', sem: 'Sem data' };
+/* ---------- chave e modelo ---------- */
+function getKey() { return el('gkey').value.trim() || ls('gemini_key') || ''; }
+function saveKey() {
+  var v = el('gkey').value.trim();
+  if (!v) { el('kstat').innerHTML = '<span style="color:#ff8a80">Cole a chave antes de salvar.</span>'; return; }
+  ss('gemini_key', v);
+  el('kstat').innerHTML = '<span style="color:#7dffb0">✅ Chave salva neste navegador.</span>';
+}
+function toggleKey() { var i = el('gkey'); i.type = i.type === 'password' ? 'text' : 'password'; }
+function getModel() { return (ls('gemini_model') || '').trim() || MODEL; }
+function saveModel() {
+  var v = el('mname').value.trim();
+  ss('gemini_model', v);
+  el('mstat').innerHTML = '<span style="color:#7dffb0">✅ ' + (v ? 'Usando o modelo ' + esc(v) : 'Voltou ao modelo padrão') + '.</span>';
+}
+el('gkey').value = ls('gemini_key') || '';
+el('mname').value = ls('gemini_model') || '';
 
-function setFilter(f) { expFilter = (expFilter === f && f !== 'all') ? 'all' : f; renderExpiry(); }
-function setTypeFilter(t) { expType = t; renderExpiry(); }
-function expMsg(html) { document.getElementById('exp-list').innerHTML = '<p class="hint" style="text-align:center;padding:18px 0">' + html + '</p>'; }
+/* ---------- login Google ---------- */
+function initAuth() {
+  if (!(window.google && google.accounts && google.accounts.oauth2)) return;
+  client = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID, scope: SCOPES,
+    callback: function (r) {
+      if (r && r.access_token) {
+        tok = r.access_token;
+        el('auth').classList.add('hidden');
+        el('cap').classList.remove('hidden');
+        el('uinfo').textContent = '● Conta do Google conectada';
+        setBtn(); loadExpiry();
+      } else if (r && r.error) {
+        el('astat').innerHTML = '<span style="color:#ff8a80">Erro: ' + esc(r.error_description || r.error) + '</span>';
+      }
+    }
+  });
+}
+function authClick() {
+  if (!client) initAuth();
+  if (!client) { el('astat').textContent = 'Aguarde o carregamento do serviço Google...'; return; }
+  el('astat').textContent = 'Abrindo autenticação...';
+  client.requestAccessToken({ prompt: '' });
+}
 
-async function loadExpiryType(type, today) {
-  const id = localStorage.getItem('user_spreadsheet_id_' + type);
-  if (!id || await isTrashed(id)) return [];
-  const info = infoCache[type] || await getSpreadsheetInfo(id);
-  const tab = "'" + info.tab.replace(/'/g, "''") + "'";
-  const g = await api('https://sheets.googleapis.com/v4/spreadsheets/' + id + '?ranges=' + encodeURIComponent(tab + '!A2:H2000') +
-    '&fields=sheets(data(rowData(values(formattedValue,effectiveValue,hyperlink))))');
-  const rows = ((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData || [];
-  const out = [];
-  rows.forEach(r => {
-    const c = (r && r.values) || [];
-    const nome = c[0] && c[0].formattedValue;
+/* ---------- API Google ---------- */
+async function api(u, m, b) {
+  var r = await fetch(u, { method: m || 'GET', headers: Object.assign({ Authorization: 'Bearer ' + tok }, b ? { 'Content-Type': 'application/json' } : {}), body: b ? JSON.stringify(b) : undefined });
+  var j = await r.json().catch(function () { return {}; });
+  if (j.error) {
+    var e = new Error(j.error.code === 401 ? 'Sessão do Google expirou. Recarregue a página e conecte de novo.' : 'Google: ' + j.error.message);
+    e.code = j.error.code; throw e;
+  }
+  return j;
+}
+async function getInfo(id) {
+  var j = await api(S + id + '?fields=properties(locale),sheets(properties(sheetId,title))');
+  return { id: id, locale: (j.properties && j.properties.locale) || '', tab: j.sheets[0].properties.title, sheetId: j.sheets[0].properties.sheetId };
+}
+async function rootOk() {
+  try { var f = await api(D + '/' + ROOT + '?fields=id,trashed'); if (f.trashed) throw new Error('x'); }
+  catch (e) { if (e.code === 401) throw e; throw new Error('Sem acesso à pasta do app no Drive. Peça ao responsável para compartilhar a pasta com a sua conta Google (como Editor).'); }
+}
+async function ensureSheet() {
+  if (sheetInfo) return sheetInfo;
+  var T = TYPES[cur], id = ls(sidKey());
+  if (id) {
+    try { var f = await api(D + '/' + id + '?fields=trashed'); if (!f.trashed) { sheetInfo = await getInfo(id); return sheetInfo; } }
+    catch (e) { if (e.code === 401) throw e; }
+    ss(sidKey(), '');
+  }
+  await rootOk();
+  var qq = "name='" + T.sheet + "' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and '" + ROOT + "' in parents";
+  var r = await api(D + '?q=' + encodeURIComponent(qq) + '&pageSize=1&fields=files(id)');
+  if (r.files && r.files.length) { ss(sidKey(), r.files[0].id); sheetInfo = await getInfo(r.files[0].id); return sheetInfo; }
+  el('status').textContent = '⏳ Criando a ' + T.sheet.toLowerCase() + ' pela primeira vez...';
+  var c = await api(D + '?fields=id', 'POST', { name: T.sheet, mimeType: 'application/vnd.google-apps.spreadsheet', parents: [ROOT] });
+  ss(sidKey(), c.id);
+  var inf = await getInfo(c.id);
+  await api(S + c.id + ':batchUpdate', 'POST', { requests: [
+    { updateSpreadsheetProperties: { properties: { locale: 'pt_BR', timeZone: 'America/Sao_Paulo' }, fields: 'locale,timeZone' } },
+    { updateSheetProperties: { properties: { sheetId: inf.sheetId, title: 'Dados', gridProperties: { frozenRowCount: 1 } }, fields: 'title,gridProperties.frozenRowCount' } },
+    { repeatCell: { range: { sheetId: inf.sheetId, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 0.83, blue: 0 }, horizontalAlignment: 'CENTER', textFormat: { bold: true } } }, fields: 'userEnteredFormat(backgroundColor,horizontalAlignment,textFormat.bold)' } }
+  ] });
+  inf.tab = 'Dados'; inf.locale = 'pt_BR';
+  sheetInfo = inf; return inf;
+}
+async function ensureHeaders(info) {
+  var tb = tq(info.tab);
+  var j = await api(S + info.id + '/values/' + encodeURIComponent(tb + '!A1'));
+  if (!(j.values && j.values[0] && j.values[0][0]))
+    await api(S + info.id + '/values/' + encodeURIComponent(tb + '!A1:I1') + '?valueInputOption=RAW', 'PUT', { values: [HEAD] });
+}
+async function photoFolder() {
+  var T = TYPES[cur], k = 'images_' + cur, id = ls(k);
+  if (id) {
+    try { var f = await api(D + '/' + id + '?fields=trashed'); if (!f.trashed) return id; }
+    catch (e) { if (e.code === 401) throw e; }
+  }
+  var qq = "name='" + T.photos + "' and mimeType='application/vnd.google-apps.folder' and trashed=false and '" + ROOT + "' in parents";
+  var r = await api(D + '?q=' + encodeURIComponent(qq) + '&pageSize=1&fields=files(id)');
+  if (r.files && r.files.length) { ss(k, r.files[0].id); return r.files[0].id; }
+  var c = await api(D + '?fields=id', 'POST', { name: T.photos, mimeType: 'application/vnd.google-apps.folder', parents: [ROOT] });
+  ss(k, c.id); return c.id;
+}
+async function upPhoto(file, d) {
+  var ext = (file.name && file.name.indexOf('.') > 0) ? file.name.split('.').pop().toLowerCase() : 'jpg';
+  var name = safe(d.nome) + '_' + safe(d.lote) + '_' + Date.now() + '.' + ext;
+  var fid = await photoFolder(), fm = new FormData();
+  fm.append('metadata', new Blob([JSON.stringify({ name: name, parents: [fid] })], { type: 'application/json' }));
+  fm.append('file', file);
+  var r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink', { method: 'POST', headers: { Authorization: 'Bearer ' + tok }, body: fm });
+  var j = await r.json().catch(function () { return {}; });
+  if (j.error) throw new Error(j.error.message);
+  return j.webViewLink;
+}
+function normDate(v) {
+  var t = String(v || '').trim(), m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+  if (m && +m[2] >= 1 && +m[2] <= 12) return pad(m[1]) + '/' + pad(m[2]) + '/' + m[3];
+  m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return pad(m[3]) + '/' + pad(m[2]) + '/' + m[1];
+  m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/);
+  if (m && +m[1] >= 1 && +m[1] <= 12) return pad(new Date(+m[2], +m[1], 0).getDate()) + '/' + pad(m[1]) + '/' + m[2];
+  return t;
+}
+async function saveRow(d, file) {
+  var info = await ensureSheet();
+  setBtn();
+  await ensureHeaders(info);
+  var tb = tq(info.tab);
+  var all = await api(S + info.id + '/values/' + encodeURIComponent(tb + '!A:F'));
+  var lote = nm(d.lote), cod = nm(d.codigo);
+  var semId = (lote === '' || lote === 'n/a') && (cod === '' || cod === 'n/a');
+  if (!semId && (all.values || []).slice(1).some(function (r) { return nm(r[0]) === nm(d.nome) && nm(r[2]) === lote && nm(r[5]) === cod; })) return 'dup';
+  var photo = 'N/A';
+  try { el('status').textContent = '⏳ Guardando a foto no Drive...'; photo = await upPhoto(file, d); }
+  catch (e) { if (e.code === 401) throw e; d._photoError = e.message; }
+  var pt = (info.locale || '').toLowerCase().indexOf('pt') === 0;
+  var n = new Date();
+  var agora = pt ? pad(n.getDate()) + '/' + pad(n.getMonth() + 1) + '/' + n.getFullYear() + ' ' + pad(n.getHours()) + ':' + pad(n.getMinutes())
+                 : n.getFullYear() + '-' + pad(n.getMonth() + 1) + '-' + pad(n.getDate()) + ' ' + pad(n.getHours()) + ':' + pad(n.getMinutes());
+  var res = await api(S + info.id + '/values/' + encodeURIComponent(tb + '!A:H') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', 'POST',
+    { values: [[d.nome || 'N/A', (pt ? normDate(d.validade) : d.validade) || 'N/A', txt(d.lote), d.fabricante || 'N/A', d.obs || 'N/A', txt(d.codigo), agora, photo]] });
+  var m = /(\d+):[A-Z]+(\d+)$/.exec((res.updates && res.updates.updatedRange) || '');
+  if (m) {
+    var r = m[1], sp = pt ? ';' : ',';
+    var f = '=IF(ISNUMBER(B' + r + ')' + sp + 'IF(B' + r + '<TODAY()' + sp + '"Vencido"' + sp + 'IF(B' + r + '<=TODAY()+30' + sp + '"Vence em 30 dias"' + sp + '"OK"))' + sp + '"Sem data")';
+    await api(S + info.id + '/values/' + encodeURIComponent(tb + '!I' + r) + '?valueInputOption=USER_ENTERED', 'PUT', { values: [[f]] });
+  }
+  return 'ok';
+}
+
+/* ---------- IA ---------- */
+function promptText() {
+  return 'Analise este rótulo de produto e extraia TODAS as informações abaixo.\n' +
+    'Retorne estritamente em formato JSON válido com as chaves: nome, validade, lote, fabricante, obs, codigo.\n' +
+    '"nome": nome do produto ou substância; "validade": data de validade; "lote": lote de fabricação; "fabricante": nome do fabricante; ' +
+    '"obs": observações ou --- caso não haja; "codigo": código numérico do produto/código de barras.\n' +
+    'Se algum campo não for identificado, use "N/A".\n\n' +
+    'Contexto: etiqueta de laboratório (' + TYPES[cur].label.toLowerCase() + '), que pode estar girada, inclinada ou com texto vertical. ' +
+    'Formato típico: nome em destaque; linhas VALIDADE (ou VAL), LOTE (ou LOTE FABR.), FABRICANTE (ou FAB) e OBS; e um código de barras com o número impresso logo abaixo (ex.: 10035-0010-00001), que vai em "codigo".\n' +
+    'Regras: transcreva exatamente como impresso, mantendo hífens, zeros à esquerda e acentos. Escreva "validade" como DD/MM/AAAA. ' +
+    'Qualquer outra informação impressa (data de fabricação, CAS, nº de risco, classe, grupo de embalagem, especificações, armazenamento) vai em "obs", separada por " | ". ' +
+    'Use "---" em "obs" somente se não houver nada. Não invente: se não estiver legível, use "N/A".';
+}
+function toB64(file) {
+  return new Promise(function (ok, bad) {
+    var r = new FileReader();
+    r.onload = function () { ok(r.result.split(',')[1]); };
+    r.onerror = bad;
+    r.readAsDataURL(file);
+  });
+}
+async function gemini(file, b64, key) {
+  var body = JSON.stringify({ contents: [{ parts: [{ text: promptText() }, { inline_data: { mime_type: file.type || 'image/jpeg', data: b64 } }] }], generationConfig: { responseMimeType: 'application/json' } });
+  var waits = [3000, 6000, 12000];
+  for (var a = 0; ; a++) {
+    var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + getModel() + ':generateContent', { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: body });
+    var j = await r.json();
+    if (!j.error) return j;
+    var c = j.error.code, msg = j.error.message || '';
+    if ([429, 500, 503, 504].indexOf(c) < 0 || a >= waits.length)
+      throw new Error(c === 429 ? 'Limite de uso da IA atingido. Tente mais tarde ou troque o modelo em "Opções avançadas".' : 'Gemini: ' + msg);
+    el('status').textContent = '⏳ A IA está ocupada, tentando de novo (' + (a + 1) + '/3)...';
+    await new Promise(function (x) { setTimeout(x, waits[a]); });
+  }
+}
+var FIELDS = [['nome', 'Nome do Produto'], ['validade', 'Data de Validade'], ['lote', 'Lote'], ['fabricante', 'Fabricante'], ['obs', 'Observação'], ['codigo', 'Código do Produto']];
+function review(data) {
+  return new Promise(function (resolve) {
+    var box = el('rfields'), panel = el('rev');
+    box.innerHTML = FIELDS.map(function (f) {
+      return '<label class="rl">' + f[1] + '<input class="field" data-k="' + f[0] + '" type="text" value="' + esc(data[f[0]] == null ? 'N/A' : data[f[0]]) + '"></label>';
+    }).join('');
+    el('status').textContent = '✏️ Aguardando sua conferência...';
+    panel.classList.remove('hidden');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    function done(v) { panel.classList.add('hidden'); el('rsave').onclick = null; el('rcancel').onclick = null; resolve(v); }
+    el('rsave').onclick = function () {
+      var o = {};
+      box.querySelectorAll('input').forEach(function (i) { o[i.dataset.k] = i.value.trim() || 'N/A'; });
+      done(o);
+    };
+    el('rcancel').onclick = function () { done(null); };
+  });
+}
+async function processOne(file, key) {
+  if ((file.type || '').indexOf('image/') === 0) { el('prev').src = URL.createObjectURL(file); el('pbox').classList.remove('hidden'); }
+  else el('pbox').classList.add('hidden');
+  el('status').textContent = '⏳ Analisando imagem com IA...';
+  var g = await gemini(file, await toB64(file), key);
+  var parts = g.candidates && g.candidates[0] && g.candidates[0].content && g.candidates[0].content.parts;
+  if (!parts || !parts[0] || !parts[0].text) throw new Error('A IA não retornou um resultado válido. Tente com boa iluminação.');
+  var data = JSON.parse(parts[0].text.replace(/```json/g, '').replace(/```/g, '').trim());
+  var rv = await review(data);
+  if (!rv) { data._skipped = true; return data; }
+  Object.assign(data, rv);
+  el('status').textContent = '⏳ Salvando na planilha Google...';
+  data._dup = (await saveRow(data, file)) === 'dup';
+  return data;
+}
+
+/* ---------- fila ---------- */
+function pending() { return queue.filter(function (q) { return q.state === 'wait' || q.state === 'work'; }).length; }
+function renderQueue() {
+  var b = el('qbox');
+  if (!queue.length) { b.classList.add('hidden'); b.innerHTML = ''; return; }
+  b.classList.remove('hidden');
+  b.innerHTML = '<p class="st" style="margin:0">Fila de análise · ' + pending() + ' de 10 vagas ocupadas</p>' +
+    queue.map(function (q) {
+      return '<div class="qi"><span class="qn">' + esc(q.file.name || 'foto') + '</span><span>' + QL[q.state] + '</span>' +
+        (q.state === 'wait' ? '<button type="button" onclick="unqueue(' + q.id + ')">✕</button>' : '') + '</div>';
+    }).join('');
+}
+function unqueue(id) { queue = queue.filter(function (q) { return !(q.id === id && q.state === 'wait'); }); renderQueue(); }
+function pick(ev) { var f = Array.from(ev.target.files || []); ev.target.value = ''; handleFiles(f); }
+function handleFiles(files) {
+  files = files.filter(function (f) { return (f.type || '').indexOf('image/') === 0 || f.type === 'application/pdf'; });
+  if (!files.length) return;
+  if (!tok) { el('astat').innerHTML = '<span style="color:#ff8a80">Conecte com o Google antes de enviar arquivos.</span>'; return; }
+  if (!getKey()) { el('status').innerHTML = '<span style="color:#ff8a80">❌ Cole sua chave da API Gemini no campo acima e clique em Salvar.</span>'; return; }
+  files.slice(0, Math.max(0, 10 - pending())).forEach(function (f) { queue.push({ id: ++seq, file: f, state: 'wait' }); });
+  renderQueue(); runQueue();
+}
+async function runQueue() {
+  if (running) return;
+  running = true; busy = true;
+  var results = [], item;
+  while ((item = queue.find(function (q) { return q.state === 'wait'; }))) {
+    item.state = 'work'; renderQueue();
+    try {
+      var d = await processOne(item.file, getKey());
+      if (d._skipped) { item.state = 'skip'; results.push('⏭️ <b>' + esc(d.nome) + '</b> descartado.'); }
+      else if (d._dup) { item.state = 'dup'; results.push('⚠️ <b>' + esc(d.nome) + '</b> já estava cadastrado.'); }
+      else { item.state = 'ok'; results.push('✅ <b>' + esc(d.nome) + '</b> — validade ' + esc(d.validade) + ', lote ' + esc(d.lote) + (d._photoError ? '<br>⚠️ A foto não foi para o Drive (' + esc(d._photoError) + ').' : '')); }
+    } catch (e) {
+      console.error(e); item.state = 'err';
+      results.push('<span style="color:#ff8a80">❌ ' + esc(item.file.name || 'foto') + ': ' + esc(e.message) + '</span>');
+    }
+    renderQueue();
+  }
+  el('status').innerHTML = '🎉 <b>Concluído!</b><br><br>' + results.join('<br>');
+  queue = []; busy = false; running = false;
+  renderQueue(); loadExpiry();
+}
+
+/* ---------- controle de validade ---------- */
+async function loadType(type, today) {
+  var id = ls(sidKey(type));
+  if (!id) return [];
+  var info = await getInfo(id);
+  var g = await api(S + id + '?ranges=' + encodeURIComponent(tq(info.tab) + '!A2:H2000') + '&fields=sheets(data(rowData(values(formattedValue,effectiveValue,hyperlink))))');
+  var rows = ((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData || [], out = [];
+  rows.forEach(function (r) {
+    var c = (r && r.values) || [], nome = c[0] && c[0].formattedValue;
     if (!nome) return;
-    const num = c[1] && c[1].effectiveValue && c[1].effectiveValue.numberValue;
-    let st = 'sem', dias = null;
+    var num = c[1] && c[1].effectiveValue && c[1].effectiveValue.numberValue, st = 'sem', dias = null;
     if (typeof num === 'number') { dias = Math.round(num - today); st = dias < 0 ? 'venc' : dias <= 30 ? 'soon' : 'ok'; }
-    out.push({ tipo: type, nome, val: (c[1] && c[1].formattedValue) || 'N/A', lote: (c[2] && c[2].formattedValue) || 'N/A',
-      foto: c[7] && c[7].hyperlink, num, dias, st });
+    var ft = c[7] && (c[7].hyperlink || (/^https?:/.test(c[7].formattedValue || '') ? c[7].formattedValue : ''));
+    out.push({ tipo: type, nome: nome, val: (c[1] && c[1].formattedValue) || 'N/A', lote: (c[2] && c[2].formattedValue) || 'N/A', foto: ft, num: num, dias: dias, st: st });
   });
   return out;
 }
-
+function emsg(h) { el('elist').innerHTML = '<p class="hint" style="text-align:center;padding:18px 0">' + h + '</p>'; }
 async function loadExpiry() {
   try {
-    if (!accessToken) { expMsg('Conecte com o Google em um dos <b>Scans</b> para ver seus produtos.'); return; }
-    expMsg('⏳ Carregando produtos...');
-    const t = new Date();
-    const today = Math.floor(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 86400000) + 25569;
-    const lists = await Promise.all(Object.keys(TYPES).map(k => loadExpiryType(k, today)));
-    expItems = lists.flat().sort((a, b) => (a.num ?? 1e9) - (b.num ?? 1e9));
-    renderExpiry();
-  } catch (e) {
-    if (e.code === 401) { expMsg('Sessão do Google expirou. Recarregue a página e conecte de novo.'); return; }
-    console.warn(e);
-    expMsg('Não consegui carregar a lista: ' + escapeHtml(e.message));
-  }
+    if (!tok) { emsg('Conecte com o Google em um dos <b>Scans</b> para ver seus produtos.'); return; }
+    emsg('⏳ Carregando produtos...');
+    var t = new Date(), today = Math.floor(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 86400000) + 25569;
+    var lists = await Promise.all(Object.keys(TYPES).map(function (k) { return loadType(k, today); }));
+    items = [].concat.apply([], lists).sort(function (a, b) { return (a.num == null ? 1e9 : a.num) - (b.num == null ? 1e9 : b.num); });
+    render();
+  } catch (e) { emsg('Não consegui carregar a lista: ' + esc(e.message)); }
 }
-// chamado após o login e após cada cadastro
-function loadSummary() { return loadExpiry(); }
-
-function renderExpiry() {
-  const count = arr => { const n = { venc: 0, soon: 0, ok: 0, sem: 0 }; arr.forEach(i => n[i.st]++); return n; };
-  const all = count(expItems);
-  const byType = expItems.filter(i => expType === 'all' || i.tipo === expType);
-  const n = count(byType);
-  [['h-expired', 'venc'], ['h-soon', 'soon'], ['h-ok', 'ok']].forEach(([id, k]) => document.getElementById(id).textContent = n[k]);
-  [['s-expired', 'venc'], ['s-soon', 'soon'], ['s-ok', 'ok']].forEach(([id, k]) => document.getElementById(id).textContent = all[k]);
-  document.getElementById('home-exp').classList.toggle('hidden', !expItems.length);
-  const alerts = all.venc + all.soon, badge = document.getElementById('nav-badge');
-  badge.textContent = alerts; badge.classList.toggle('hidden', !alerts);
-  document.querySelectorAll('#exp-filters button').forEach(b => b.classList.toggle('on', b.dataset.f === expFilter));
-  document.querySelectorAll('#exp-types button').forEach(b => b.classList.toggle('on', b.dataset.t === expType));
-  document.querySelectorAll('.chips .chip[data-f]').forEach(b => b.classList.toggle('sel', b.dataset.f === expFilter));
-
-  const list = byType.filter(i => expFilter === 'all' || i.st === expFilter);
-  if (!list.length) { expMsg(expItems.length ? 'Nenhum produto nesta categoria.' : 'Nenhum produto ainda. Escaneie o primeiro rótulo em um dos <b>Scans</b>.'); return; }
-  document.getElementById('exp-list').innerHTML = list.map(i => {
-    const quando = i.dias === null ? '' : i.dias < 0 ? 'há ' + (-i.dias) + ' dia' + (i.dias === -1 ? '' : 's')
-      : i.dias === 0 ? 'hoje' : 'em ' + i.dias + ' dia' + (i.dias === 1 ? '' : 's');
-    return '<div class="pr ' + i.st + '"><div><div class="nm">' + escapeHtml(i.nome) + '</div>' +
-      '<div class="mt">' + TYPES[i.tipo].emoji + ' ' + TYPES[i.tipo].label + ' · Validade ' + escapeHtml(i.val) + ' · Lote ' + escapeHtml(i.lote) +
-      (i.foto ? ' · <a href="' + escapeHtml(i.foto) + '" target="_blank" rel="noopener">ver foto</a>' : '') + '</div></div>' +
-      '<div class="bd ' + i.st + '">' + EXP_LABEL[i.st] + (quando ? '<br><span style="font-weight:500">' + quando + '</span>' : '') + '</div></div>';
+function setF(f) { fSt = (fSt === f && f !== 'all') ? 'all' : f; render(); }
+function setT(t) { fType = t; render(); }
+function count(a) { var n = { venc: 0, soon: 0, ok: 0, sem: 0 }; a.forEach(function (i) { n[i.st]++; }); return n; }
+function render() {
+  var all = count(items), by = items.filter(function (i) { return fType === 'all' || i.tipo === fType; }), n = count(by);
+  ['venc', 'soon', 'ok'].forEach(function (k) { el('h-' + k).textContent = n[k]; el('s-' + k).textContent = all[k]; });
+  el('home-exp').classList.toggle('hidden', !items.length);
+  var al = all.venc + all.soon, bg = el('nbadge');
+  bg.textContent = al; bg.classList.toggle('hidden', !al);
+  document.querySelectorAll('#fst button').forEach(function (b) { b.classList.toggle('on', b.dataset.f === fSt); });
+  document.querySelectorAll('#ftypes button').forEach(function (b) { b.classList.toggle('on', b.dataset.t === fType); });
+  document.querySelectorAll('.chips .chip[data-f]').forEach(function (b) { b.classList.toggle('sel', b.dataset.f === fSt); });
+  var list = by.filter(function (i) { return fSt === 'all' || i.st === fSt; });
+  if (!list.length) { emsg(items.length ? 'Nenhum produto nesta categoria.' : 'Nenhum produto ainda. Escaneie o primeiro rótulo em um dos <b>Scans</b>.'); return; }
+  el('elist').innerHTML = list.map(function (i) {
+    var q = i.dias === null ? '' : i.dias < 0 ? 'há ' + (-i.dias) + ' dia' + (i.dias === -1 ? '' : 's') : i.dias === 0 ? 'hoje' : 'em ' + i.dias + ' dia' + (i.dias === 1 ? '' : 's');
+    return '<div class="pr ' + i.st + '"><div><div class="nm">' + esc(i.nome) + '</div><div class="mt">' + TYPES[i.tipo].emoji + ' ' + TYPES[i.tipo].label +
+      ' · Validade ' + esc(i.val) + ' · Lote ' + esc(i.lote) + (i.foto ? ' · <a href="' + esc(i.foto) + '" target="_blank" rel="noopener">ver foto</a>' : '') +
+      '</div></div><div class="bd ' + i.st + '">' + LAB[i.st] + (q ? '<br>' + q : '') + '</div></div>';
   }).join('');
 }
+
+/* ---------- arrastar, soltar e colar ---------- */
+(function () {
+  var dz = el('drop');
+  ['dragenter', 'dragover'].forEach(function (ev) { dz.addEventListener(ev, function (e) { e.preventDefault(); }); });
+  dz.addEventListener('drop', function (e) { e.preventDefault(); handleFiles(Array.from(e.dataTransfer.files || [])); });
+  ['dragover', 'drop'].forEach(function (ev) { window.addEventListener(ev, function (e) { e.preventDefault(); }); });
+  document.addEventListener('paste', function (e) { var f = Array.from((e.clipboardData && e.clipboardData.files) || []); if (f.length) handleFiles(f); });
+})();
+refreshLinks();
 setType('reagentes');
 </script>
-
-<script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
+<script src="https://accounts.google.com/gsi/client" async defer onload="initAuth()"></script>
 </body>
 </html>
-
-
