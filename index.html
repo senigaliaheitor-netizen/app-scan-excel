@@ -348,7 +348,7 @@ refreshLinks();
 </script>
 
 <script>
-const CLIENT_ID = '855748596555-hjfkmssa245r6ep9u5oo5tc20rbl3lv0.apps.googleusercontent.com';
+const CLIENT_ID = '295173125810-r7f6lq1vfrkrt9s1rem7pjv1rfedm3j8.apps.googleusercontent.com';
 const GEMINI_MODEL = 'gemini-3.8-flash';
 const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
 // Opcional: se colar sua chave Gemini aqui, ela vale em todo aparelho. Atenção: em repositório público, qualquer pessoa pode ler e usar essa chave.
@@ -404,7 +404,7 @@ function quotaMessage(msg) {
     const secs = retrySeconds(msg);
     const lim = /limit:\s*(\d+)/i.exec(msg || '');
     let quando = '';
-    if (secs) { const h = Math.floor(secs / 3600), mi = Math.ceil((secs % 3600) / 60); quando = ` Libera de novo em cerca de ${h ? h + 'h' : ''}${mi}min.`; }
+    if (secs) { const h = Math.floor(secs / 3600), mi = Math.ceil((secs % 3600) / 60); quando = ` Libera de novo em cerca de h?h+'h':''{mi}min.`; }
     return `Limite de uso da IA atingido${lim ? ` (limite de ${lim[1]} no plano gratuito)` : ''}.${quando} Para continuar agora: ative o faturamento no projeto do Google Cloud ou informe outro modelo em "Opções avançadas".`;
 }
 
@@ -470,7 +470,7 @@ function renderQueue() {
     box.innerHTML =
         `<p class="section-title" style="margin:0">Fila de análise · ${pendingCount()} de ${MAX_QUEUE} vagas ocupadas</p>` +
         (queueNote ? `<p class="hint" style="margin:6px 0 0;color:#ffd77a">${escapeHtml(queueNote)}</p>` : '') +
-        queue.map(q => `<div class="qi ${q.state}"><span class="qn">${escapeHtml(q.file.name || 'foto')}</span>` +
+        queue.map(q => `<div class="qi q.state"><spanclass="qn">{escapeHtml(q.file.name || 'foto')}</span>` +
             `<span class="qs">${QLABEL[q.state]}</span>` +
             (q.state === 'wait' ? `<button type="button" aria-label="Remover da fila" onclick="removeFromQueue(${q.id})">✕</button>` : '') +
             `</div>`).join('');
@@ -521,7 +521,7 @@ async function runQueue() {
     let item;
     while ((item = queue.find(q => q.state === 'wait'))) {
         item.state = 'work'; renderQueue();
-        const label = queue.length > 1 ? ` (${queue.indexOf(item) + 1}/${queue.length})` : '';
+        const label = queue.length > 1 ? ` (queue.indexOf(item)+1/{queue.length})` : '';
         const nm = escapeHtml(item.file.name || 'foto');
         try {
             const data = await processOne(item.file, getKey(), label);
@@ -543,7 +543,7 @@ async function runQueue() {
         }
         renderQueue();
     }
-    status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados na <b>${escapeHtml(TYPES[currentType].sheet)}</b> (pasta <b>${escapeHtml(ROOT_FOLDER_TITLE)}</b> no Drive).<br><br>` +
+    status.innerHTML = `🎉 <b>Concluído!</b> Novos dados adicionados na <b>escapeHtml(TYPES[currentType].sheet)</b>(pasta<b>{escapeHtml(ROOT_FOLDER_TITLE)}</b> no Drive).<br><br>` +
         queueResults.join('<br>') +
         (notices.length ? '<br><br><span class="text-amber-600">' + notices.map(escapeHtml).join('<br>') + '</span>' : '');
     queue = []; queueResults = []; notices = []; queueNote = '';
@@ -617,7 +617,7 @@ Regras: transcreva exatamente como impresso, mantendo hífens, zeros à esquerda
             // falha de rede também merece nova tentativa; qualquer outro erro encerra
             if (!(e instanceof TypeError) || attempt >= waits.length) throw e;
         }
-        status.innerHTML = `⏳ A IA está ocupada, tentando de novo (${attempt + 1}/${waits.length})...${label}`;
+        status.innerHTML = `⏳ A IA está ocupada, tentando de novo (attempt+1/{waits.length})...${label}`;
         await new Promise(r => setTimeout(r, waitMs));
     }
 
@@ -651,7 +651,7 @@ function reviewData(data, label) {
         const box = document.getElementById('review-fields');
         box.innerHTML = REVIEW_FIELDS.map(([k, name]) => `
             <label class="rv-label">${name}
-                <input data-k="${k}" type="text" value="${escapeHtml(data[k] ?? 'N/A')}"
+                <input data-k="k"type="text"value="{escapeHtml(data[k] ?? 'N/A')}"
                        class="field">
             </label>`).join('');
         document.getElementById('status').innerHTML = `✏️ Aguardando sua conferência...${label}`;
@@ -715,17 +715,17 @@ async function isTrashed(id) {
 function pad2(n) { return String(n).padStart(2, '0'); }
 function nowForSheet(locale) {
     const d = new Date();
-    const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+    const hm = `pad2(d.getHours()):{pad2(d.getMinutes())}`;
     if ((locale || '').toLowerCase().startsWith('pt')) {
-        return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`;
+        return `pad2(d.getDate())/{pad2(d.getMonth() + 1)}/${d.getFullYear()} ${hm}`;
     }
-    return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${hm}`;
+    return `d.getFullYear()-{pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${hm}`;
 }
 
 // mantém códigos/lotes só com números como texto (preserva zeros à esquerda)
 function asText(v) {
     const s = String(v ?? 'N/A');
-    return /^\d+$/.test(s) ? `'${s}` : s;
+    return /^\d+/.test(s)?`'{s}` : s;
 }
 
 /* ---------- Pastas e foto do rótulo no Drive ---------- */
@@ -745,7 +745,7 @@ async function findOrCreateFolder(name, parentId, storeKey) {
     const saved = load(storeKey);
     if (saved && await folderAlive(saved)) { folderCache[storeKey] = saved; return saved; }
 
-    let q = `name='${name}' and mimeType='${FOLDER_MIME}' and trashed=false`;
+    let q = `name='name'andmimeType='{FOLDER_MIME}' and trashed=false`;
     if (parentId) q += ` and '${parentId}' in parents`;
     try {
         const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
@@ -769,7 +769,7 @@ async function ensureSheetInFolder(info) {
         const parents = f.parents || [];
         if (!parents.includes(root)) {
             const remove = parents.length ? `&removeParents=${encodeURIComponent(parents.join(','))}` : '';
-            await api(`https://www.googleapis.com/drive/v3/files/${info.id}?addParents=${root}${remove}&fields=id,parents`, 'PATCH', {});
+            await api(`https://www.googleapis.com/drive/v3/files/info.id?addParents={root}${remove}&fields=id,parents`, 'PATCH', {});
         }
     } catch (e) {
         if (e.code === 401) throw e;
@@ -784,8 +784,8 @@ async function uploadLabelPhoto(file, data) {
     const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop().toLowerCase()
         : ((file.type || '').split('/')[1] || 'jpg');
     const d = new Date();
-    const stamp = `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
-    const name = `${safeName(data.nome) || 'rotulo'}_${safeName(data.lote) || 'sem-lote'}_${stamp}.${ext}`;
+    const stamp = `d.getFullYear()-{pad2(d.getMonth() + 1)}-${pad2(d.getDate())}_${pad2(d.getHours())}pad2(d.getMinutes()){pad2(d.getSeconds())}`;
+    const name = `${safeName(data.nome) || 'rotulo'}_${safeName(data.lote) || 'sem-lote'}_stamp.{ext}`;
 
     const send = async (folderId) => {
         const form = new FormData();
@@ -874,7 +874,7 @@ function linkCellRequest(sheetId, rowIndex, url) {
 
 /* ---------- Garantia de link clicável: lê a célula de volta e usa a fórmula HYPERLINK se preciso ---------- */
 async function cellHasLink(info, tab, addr) {
-    const g = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}?ranges=${encodeURIComponent(tab + '!' + addr)}&fields=sheets(data(rowData(values(formattedValue,hyperlink))))`);
+    const g = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id?ranges={encodeURIComponent(tab + '!' + addr)}&fields=sheets(data(rowData(values(formattedValue,hyperlink))))`);
     const c = (((((g.sheets || [])[0] || {}).data || [])[0] || {}).rowData || [])[0];
     const cell = c && c.values && c.values[0];
     return !!(cell && cell.hyperlink);
@@ -883,16 +883,16 @@ async function cellHasLink(info, tab, addr) {
 async function verifyLinkCell(info, row, col, url, text) {
     try {
         const tab = `'${info.tab.replace(/'/g, "''")}'`;
-        const addr = `${col}${row}`;
+        const addr = `col{row}`;
         if (await cellHasLink(info, tab, addr)) return true;
 
         // método 2: fórmula HYPERLINK (testa ";" e "," conforme o idioma da planilha)
         const guess = (info.locale || '').toLowerCase().startsWith('pt') ? ';' : ',';
         const seps = [info.sep, guess, guess === ';' ? ',' : ';'].filter((v, i, a) => v && a.indexOf(v) === i);
-        const put = (val) => api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!' + addr)}?valueInputOption=USER_ENTERED`, 'PUT', { values: [[val]] });
+        const put = (val) => api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!' + addr)}?valueInputOption=USER_ENTERED`, 'PUT', { values: [[val]] });
         for (const sep of seps) {
             try {
-                await put(`=HYPERLINK("${url}"${sep}"${text}")`);
+                await put(`=HYPERLINK("url"{sep}"${text}")`);
                 if (await cellHasLink(info, tab, addr)) return true;
             } catch (e) { if (e.code === 401) throw e; }
         }
@@ -938,16 +938,16 @@ async function formatNewRow(info, appendResp, photoLink) {
 function normalizeDate(v) {
     const t = String(v || '').trim();
     let m = t.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
-    if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) return `${pad2(m[1])}/${pad2(m[2])}/${m[3]}`;
+    if (m && +m[1] >= 1 && +m[1] <= 31 && +m[2] >= 1 && +m[2] <= 12) return `pad2(m[1])/{pad2(m[2])}/${m[3]}`;
     m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-    if (m && +m[2] >= 1 && +m[2] <= 12) return `${pad2(m[3])}/${pad2(m[2])}/${m[1]}`;
+    if (m && +m[2] >= 1 && +m[2] <= 12) return `pad2(m[3])/{pad2(m[2])}/${m[1]}`;
     m = t.match(/^(\d{1,2})[\/\-.](\d{4})$/); // mês/ano -> último dia do mês
-    if (m && +m[1] >= 1 && +m[1] <= 12) return `${pad2(new Date(+m[2], +m[1], 0).getDate())}/${pad2(m[1])}/${m[2]}`;
+    if (m && +m[1] >= 1 && +m[1] <= 12) return `pad2(newDate(+m[2],+m[1],0).getDate())/{pad2(m[1])}/${m[2]}`;
     return t;
 }
 
 function statusFormula(row, sep) {
-    return `=IF(ISNUMBER(B${row})${sep}IF(B${row}<TODAY()${sep}"Vencido"${sep}IF(B${row}<=TODAY()+30${sep}"Vence em 30 dias"${sep}"OK"))${sep}"Sem data")`;
+    return `=IF(ISNUMBER(Brow){sep}IF(Brow<TODAY(){sep}"Vencido"sepIF(B{row}<=TODAY()+30sep"Venceem30dias"{sep}"OK"))${sep}"Sem data")`;
 }
 
 // grava a fórmula; descobre sozinho se o Google quer ";" ou "," e lembra
@@ -960,10 +960,10 @@ async function writeStatusFormulas(info, rows) {
         try {
             await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values:batchUpdate`, 'POST', {
                 valueInputOption: 'USER_ENTERED',
-                data: rows.map(r => ({ range: `${tab}!I${r}`, values: [[statusFormula(r, sep)]] }))
+                data: rows.map(r => ({ range: `tab!I{r}`, values: [[statusFormula(r, sep)]] }))
             });
             if (info.sep) return true;
-            const chk = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!I' + rows[0])}`);
+            const chk = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!I' + rows[0])}`);
             const val = chk.values && chk.values[0] && chk.values[0][0];
             if (val && !String(val).startsWith('#') && !String(val).startsWith('=')) { info.sep = sep; return true; }
         } catch (e) { if (e.code === 401) throw e; console.warn('Fórmula de status com', sep, 'falhou:', e); }
@@ -996,7 +996,7 @@ async function ensureStatusColumn(info) {
             ] });
         }
         // linhas sem status
-        const all = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!A2:I1000')}`);
+        const all = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A2:I1000')}`);
         const missing = [];
         (all.values || []).forEach((r, i) => { if (r && r[0] && !r[8]) missing.push(i + 2); });
         await writeStatusFormulas(info, missing);
@@ -1025,7 +1025,7 @@ async function isDuplicate(info, tabRange, data) {
     const lote = norm(data.lote), cod = norm(data.codigo);
     // sem lote e sem código não dá para afirmar que é repetido
     if ((lote === '' || lote === 'n/a') && (cod === '' || cod === 'n/a')) return false;
-    const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tabRange)}`);
+    const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tabRange)}`);
     const rows = (j.values || []).slice(1); // pula o cabeçalho
     return rows.some(r => norm(r[0]) === norm(data.nome) && norm(r[2]) === lote && norm(r[5]) === cod);
 }
@@ -1055,7 +1055,7 @@ async function saveToUserGoogleSheet(data, file) {
     }
 
     const appended = await api(
-        `https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
+        `https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(range)}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`,
         'POST',
         { values: [[
             data.nome || "N/A",
@@ -1117,9 +1117,9 @@ function resetImagesFolder() { const k = 'images_' + currentType; delete folderC
 async function ensureHeaders(info) {
   if (info.hdrOk) return;
   const tab = "'" + info.tab.replace(/'/g, "''") + "'";
-  const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!A1')}`);
+  const j = await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A1')}`);
   if (!(j.values && j.values[0] && j.values[0][0]))
-    await api(`https://sheets.googleapis.com/v4/spreadsheets/${info.id}/values/${encodeURIComponent(tab + '!A1:I1')}?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
+    await api(`https://sheets.googleapis.com/v4/spreadsheets/info.id/values/{encodeURIComponent(tab + '!A1:I1')}?valueInputOption=RAW`, 'PUT', { values: [HEADERS] });
   info.hdrOk = true;
 }
 
@@ -1142,7 +1142,7 @@ async function ensureSpreadsheet() {
     }
   }
   const root = await ensureRootFolder();
-  const q = `name='${T.sheet}' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false and '${root}' in parents`;
+  const q = `name='T.sheet'andmimeType='application/vnd.google-apps.spreadsheet'andtrashed=falseand'{root}' in parents`;
   try {
     const f = await api(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&orderBy=createdTime&pageSize=5&fields=files(id)`);
     if (f.files && f.files.length) { store('user_spreadsheet_id', f.files[0].id); return remember(await getSpreadsheetInfo(f.files[0].id)); }
@@ -1258,3 +1258,5 @@ setType('reagentes');
 <script src="https://accounts.google.com/gsi/client" async defer onload="initGoogleAuth()"></script>
 </body>
 </html>
+
+
